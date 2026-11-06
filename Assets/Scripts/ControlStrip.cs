@@ -13,6 +13,7 @@ namespace DjVisuals
         public VisualActions Actions;
         public RenderTexture Wide;
         public int PanelCount = 3;
+        public bool ShowAdvanced = true;   // Accent/Build/Drop/Progress/Reset; off while a world only handles the beat
 
         string bpmText = "120";
         bool lastBeatFlash;
@@ -55,20 +56,26 @@ namespace DjVisuals
             GUILayout.Space(10);
             if (GUILayout.Button("Sync (Space)", GUILayout.Width(100))) Actions.Sync();
             if (GUILayout.Button("Beat (B)", GUILayout.Width(80))) Actions.ManualBeat();
-            if (GUILayout.Button("Accent (A)", GUILayout.Width(90))) Actions.FireAccent();
-            if (GUILayout.Button("Drop (D)", GUILayout.Width(80))) Actions.FireDrop();
-            if (GUILayout.Button("Progress (P)  " + Actions.Progression, GUILayout.Width(120))) Actions.Advance();
-            if (GUILayout.Button("Reset (R)", GUILayout.Width(80))) Actions.DoReset();
+            if (ShowAdvanced)
+            {
+                if (GUILayout.Button("Accent (A)", GUILayout.Width(90))) Actions.FireAccent();
+                if (GUILayout.Button("Drop (D)", GUILayout.Width(80))) Actions.FireDrop();
+                if (GUILayout.Button("Progress (P)  " + Actions.Progression, GUILayout.Width(120))) Actions.Advance();
+                if (GUILayout.Button("Reset (R)", GUILayout.Width(80))) Actions.DoReset();
+            }
             GUILayout.FlexibleSpace();
             DrawBeatIndicator();
             GUILayout.EndHorizontal();
 
             GUILayout.Space(6);
             GUILayout.BeginHorizontal();
-            GUILayout.Label("Build (Up/Down)", GUILayout.Width(110));
-            Actions.SetBuild(GUILayout.HorizontalSlider(Actions.Build, 0f, 1f, GUILayout.Width(300)));
-            GUILayout.Label(Actions.Build.ToString("0.00"), GUILayout.Width(40));
-            GUILayout.Space(20);
+            if (ShowAdvanced)
+            {
+                GUILayout.Label("Build (Up/Down)", GUILayout.Width(110));
+                Actions.SetBuild(GUILayout.HorizontalSlider(Actions.Build, 0f, 1f, GUILayout.Width(300)));
+                GUILayout.Label(Actions.Build.ToString("0.00"), GUILayout.Width(40));
+                GUILayout.Space(20);
+            }
             GUILayout.Label(Actions.Clock.Running
                 ? "Synced @ " + Actions.Clock.Bpm.ToString("0.##", CultureInfo.InvariantCulture) + " BPM"
                 : "Not synced: press Sync on a downbeat");
@@ -105,6 +112,7 @@ namespace DjVisuals
             var e = Event.current;
             if (e.type != EventType.KeyDown) return;
             if (GUI.GetNameOfFocusedControl() == "bpm") return; // typing a tempo
+            if (!ShowAdvanced && e.keyCode != KeyCode.Space && e.keyCode != KeyCode.B) return;
             switch (e.keyCode)
             {
                 case KeyCode.Space: Actions.Sync(); break;

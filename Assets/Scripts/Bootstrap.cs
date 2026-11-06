@@ -10,6 +10,9 @@ namespace DjVisuals
     {
         const int PanelCount = 3;
 
+        // Which world to run. Space is wired for the beat only; rain has every control.
+        const bool UseSpace = true;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Start()
         {
@@ -23,9 +26,18 @@ namespace DjVisuals
             var actions = root.AddComponent<VisualActions>();
             actions.Clock = clock;
 
-            var world = new GameObject("RainWorld").AddComponent<RainWorld>();
-            world.transform.SetParent(root.transform);
-            world.Init(actions);
+            if (UseSpace)
+            {
+                var space = new GameObject("SpaceWorld").AddComponent<SpaceWorld>();
+                space.transform.SetParent(root.transform);
+                space.Init(actions);
+            }
+            else
+            {
+                var rain = new GameObject("RainWorld").AddComponent<RainWorld>();
+                rain.transform.SetParent(root.transform);
+                rain.Init(actions);
+            }
 
             // One wide view, cropped into PanelCount windows by the control strip.
             // Width scales with panel count so a 3x3 or other layout keeps the same pixel density.
@@ -34,8 +46,17 @@ namespace DjVisuals
 
             var camGo = new GameObject("WideCamera");
             camGo.transform.SetParent(root.transform);
-            camGo.transform.position = new Vector3(0, 3.2f, -16f);
-            camGo.transform.rotation = Quaternion.Euler(4f, 0, 0);
+            if (UseSpace)
+            {
+                // Chase view: behind the ship, which sits at the origin facing +Z.
+                camGo.transform.position = new Vector3(0, 1.4f, -9f);
+                camGo.transform.rotation = Quaternion.Euler(4f, 0, 0);
+            }
+            else
+            {
+                camGo.transform.position = new Vector3(0, 3.2f, -16f);
+                camGo.transform.rotation = Quaternion.Euler(4f, 0, 0);
+            }
             var cam = camGo.AddComponent<Camera>();
             cam.targetTexture = rt;
             cam.clearFlags = CameraClearFlags.SolidColor;
@@ -56,6 +77,7 @@ namespace DjVisuals
             strip.Actions = actions;
             strip.Wide = rt;
             strip.PanelCount = PanelCount;
+            strip.ShowAdvanced = !UseSpace;   // hide controls that aren't wired to the space world yet
         }
     }
 }

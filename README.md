@@ -2,7 +2,7 @@
 
 Proof of concept: a beat-synced visual world cropped into three virtual panels on a second monitor, played against a separately running track. Full spec: [Unity-DJ-Visuals-Handoff.md](Unity-DJ-Visuals-Handoff.md).
 
-Current world: **rain** (dark scene, one blue uplight). No third-party assets; everything is Unity primitives plus code-built particle systems.
+Current world: **space, beat only** (`SpaceWorld.cs`: a ship whose engine rings ripple-flare on every beat; only BPM, Sync and Beat are wired and the other controls are hidden). Switch `UseSpace` in `Bootstrap.cs` to run the **rain** world, which has every control. Rain: (dark scene, one blue uplight). No third-party assets; everything is Unity primitives plus code-built particle systems.
 
 ## Status
 
