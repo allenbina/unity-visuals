@@ -31,20 +31,13 @@ namespace DjVisuals
             Directory.CreateDirectory(OutDir);
             steps = new[]
             {
-                new Step { t = 0.3f, kind = "sync" },
-                new Step { t = 1.0f, kind = "drop" },    // Ember Nebula
-                new Step { t = 6.6f, kind = "drop" },    // Twin Suns
-                new Step { t = 12.2f, kind = "drop" },   // Shard Field
-                new Step { t = 17.8f, kind = "drop" },   // Event Horizon
-                new Step { t = 20.0f, kind = "shot", arg = "01_bh_arriving" },
-                new Step { t = 23.5f, kind = "shot", arg = "02_bh" },
-                new Step { t = 24.0f, kind = "accent" },
-                new Step { t = 26.0f, kind = "shot", arg = "03_bh_pose1" },
-                new Step { t = 26.3f, kind = "accent" },
-                new Step { t = 28.3f, kind = "shot", arg = "04_bh_pose2" },
-                new Step { t = 28.8f, kind = "accent" },
-                new Step { t = 30.8f, kind = "shot", arg = "05_bh_pose3" },
-                new Step { t = 31.3f, kind = "quit" },
+                new Step { t = 0.3f, kind = "sync" },        // downbeat at 0.3, then a beat every 0.5 s
+                new Step { t = 0.42f, kind = "shot", arg = "01_downbeat" },
+                new Step { t = 0.70f, kind = "shot", arg = "02_between" },
+                new Step { t = 0.86f, kind = "shot", arg = "03_beat2" },
+                new Step { t = 1.20f, kind = "shot", arg = "04_between" },
+                new Step { t = 1.88f, kind = "shot", arg = "05_beat4" },
+                new Step { t = 2.3f, kind = "quit" },
             };
         }
 
@@ -97,6 +90,8 @@ namespace DjVisuals
             File.WriteAllBytes(Path.Combine(OutDir, name + "_center.png"), c.EncodeToPNG());
             Destroy(tex);
             Destroy(c);
+            var shipGo = GameObject.Find("Ship");
+            if (shipGo != null) Debug.Log("[DjVisuals] ship " + name + " z=" + shipGo.transform.localPosition.z.ToString("F3") + " pitch=" + shipGo.transform.localEulerAngles.x.ToString("F2"));
             Debug.Log("[DjVisuals] captured " + name);
         }
     }

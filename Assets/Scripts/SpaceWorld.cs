@@ -31,6 +31,10 @@ namespace DjVisuals
         Material[] ringMats;
         Vector3[] ringBaseScale;
         float[] ringPulse;
+        float[] ringThrust;        // 0..1 flame level per nozzle this frame
+        bool[] ringOuter;          // outer nozzles pulse on the beat; inner ones burn steadily
+        float kickT = 99f;         // seconds since the last beat
+        float kickStrength = 1f;
         float[] ringDelay;
         readonly List<ParticleSystem> blasts = new List<ParticleSystem>();
         readonly List<float> blastShare = new List<float>();
@@ -187,7 +191,7 @@ namespace DjVisuals
 
             trailMat = Mats.Trail(new Color(3.5f, 3.8f, 4.5f, 1f));
 
-            actions.Beat += _ => Flare();
+            actions.Beat += Flare;
             actions.WarpChanged += OnWarpChanged;
             actions.Drop += OnDrop;
             actions.Accent += OnAccent;
@@ -375,10 +379,13 @@ namespace DjVisuals
             ringMats = new Material[ringCount];
             ringBaseScale = new Vector3[ringCount];
             ringPulse = new float[ringCount];
+            ringThrust = new float[ringCount];
+            ringOuter = new bool[ringCount];
             ringDelay = new float[ringCount];
             for (int i = 0; i < ringCount; i++)
             {
                 bool outer = Mathf.Abs(nx[i]) > 2f;
+                ringOuter[i] = outer;
                 var pos = new Vector3(nx[i] * scale, -0.075f, -2.95f * scale - 0.76f);
                 float d = outer ? 1.9f : 1.5f;
                 var mat = Mats.Additive(EngineColor * 1.2f, 1.6f);
@@ -421,6 +428,8 @@ namespace DjVisuals
             ringMats = new Material[ringCount];
             ringBaseScale = new Vector3[ringCount];
             ringPulse = new float[ringCount];
+            ringThrust = new float[ringCount];
+            ringOuter = new bool[ringCount];
             ringDelay = new float[ringCount];
             for (int i = 0; i < ringCount; i++)
             {
@@ -535,9 +544,12 @@ namespace DjVisuals
 
         // =================== actions ===================
 
-        void Flare()
+        void Flare(int beatIndex)
         {
-            for (int i = 0; i < ringCount; i++) ringDelay[i] = (glowRings ? i / 2 : i) * RippleDelay * (glowRings ? 1.6f : 1f);
+            // glow nozzles fire together right on the beat; the old ripple made the outer pair late
+            for (int i = 0; i < ringCount; i++) ringDelay[i] = glowRings ? 0f : i * RippleDelay;
+            kickT = 0f;
+            kickStrength = (beatIndex < 0 || beatIndex % BeatClock.BeatsPerBar == 0) ? 1f : 0.7f;   // the downbeat hits hardest
         }
 
         void OnWarpChanged(bool on)
@@ -565,7 +577,7 @@ namespace DjVisuals
             surge = 1f;
             SpawnShootingStar();
             SpawnShootingStar();
-            Flare();
+            Flare(-1);
             NextShot();   // the ship glides to another panel while the camera swings to a new angle
         }
 
@@ -1044,10 +1056,16 @@ namespace DjVisuals
             float jitter = warp * 0.03f;
             shipHome = Vector3.SmoothDamp(shipHome, shipTarget, ref shipVel, 1.1f);
             float bank = Mathf.Clamp(-shipVel.x * 1.1f, -28f, 28f);   // lean into the move
-            ship.localPosition = shipHome + new Vector3(Mathf.Sin(t * 47f) * jitter, Mathf.Sin(t * 0.8f) * 0.08f + Mathf.Sin(t * 53f) * jitter, 0);
-            ship.localRotation = Quaternion.Euler(Mathf.Sin(t * 0.5f) * 0.8f, 0, Mathf.Sin(t * 0.7f) * 1.5f + bank);
+            kickT += dt;
+            float ke = kickT < 0.07f ? kickT / 0.07f : Mathf.Exp(-(kickT - 0.07f) * 3f);   // quick rise, slow drop
+            ke *= kickStrength;
+            float lunge = ke * 0.4f;      // forward
+            float nose = ke * 2.6f;       // nose dips: the ship rocks forward into the thrust
+            ship.localPosition = shipHome + new Vector3(Mathf.Sin(t * 47f) * jitter, Mathf.Sin(t * 0.8f) * 0.08f + Mathf.Sin(t * 53f) * jitter, lunge);
+            ship.localRotation = Quaternion.Euler(Mathf.Sin(t * 0.5f) * 0.8f + nose, 0, Mathf.Sin(t * 0.7f) * 1.5f + bank);
 
             float lightPulse = 0f;
+            bool synced = actions.Clock.Running;
             for (int i = 0; i < ringCount; i++)
             {
                 if (ringDelay[i] >= 0f)
@@ -1056,17 +1074,24 @@ namespace DjVisuals
                     if (ringDelay[i] < 0f) { ringPulse[i] = 1f; ringDelay[i] = -1f; }
                 }
                 ringPulse[i] = Mathf.Max(0f, ringPulse[i] - dt * 4.5f);
-                float p = ringPulse[i] * ringPulse[i];
+                float pl = ringPulse[i];
+                float p = pl * pl;
+                // Inner nozzles burn steadily and lift a little on the beat; outer ones are nearly dark between beats.
+                bool outerN = glowRings && ringOuter[i];
+                float baseT = outerN ? (synced ? 0.05f : 0.4f) : 0.7f;
+                ringThrust[i] = Mathf.Max(Mathf.Clamp01(baseT + (1f - baseT) * pl), warp);
                 if (glowRings)
                 {
-                    float g = 1f + p * 0.7f + warp * 0.35f;
+                    float th = ringThrust[i];
+                    float g = 0.75f + 0.5f * th + p * 0.3f + warp * 0.35f;
                     rings[i].localScale = new Vector3(ringBaseScale[i].x * g, ringBaseScale[i].y * g, 1f);
-                    var gc = EngineColor * (1.2f + warp * 2.5f + p * 6f);
-                    gc.a = Mathf.Clamp01(0.55f + p * 0.45f + warp * 0.3f);
+                    var gc = EngineColor * (0.2f + 1.5f * th + p * 5f + warp * 2.5f);
+                    gc.a = Mathf.Clamp01(0.15f + 0.5f * th + p * 0.4f + warp * 0.3f);
                     ringMats[i].SetColor("_Color", gc);
                 }
                 else
                 {
+                    ringThrust[i] = 1f;
                     float grow = 1f + p * 0.55f;
                     rings[i].localScale = new Vector3(ringBaseScale[i].x * grow, ringBaseScale[i].y * (1f + p * 2f), ringBaseScale[i].z * grow);
                     Mats.Emission(ringMats[i], EngineColor * (0.5f + warp * 2f + p * 4f));
@@ -1081,11 +1106,13 @@ namespace DjVisuals
             {
                 var b = blasts[bi];
                 var em = b.emission;
-                em.rateOverTime = Mathf.Lerp(500f, 1000f, warp) * blastShare[bi] * (1f + lightPulse * 0.4f);
+                float th = bi < ringCount ? ringThrust[bi] : 1f;
+                em.rateOverTime = Mathf.Lerp(500f, 1000f, warp) * blastShare[bi] * (0.06f + 0.94f * th);
                 var m = b.main;
-                m.startSpeed = Mathf.Lerp(12f, 26f, warp) * (1f + lightPulse * 0.25f);
+                m.startSpeed = Mathf.Lerp(12f, 26f, warp) * (0.55f + 0.45f * th);
                 m.startLifetime = Mathf.Lerp(0.5f, 0.6f, warp);
-                m.startSize = new ParticleSystem.MinMaxCurve(Mathf.Lerp(0.2f, 0.4f, warp), Mathf.Lerp(0.4f, 0.8f, warp));
+                float sz = 0.6f + 0.4f * th;
+                m.startSize = new ParticleSystem.MinMaxCurve(Mathf.Lerp(0.2f, 0.4f, warp) * sz, Mathf.Lerp(0.4f, 0.8f, warp) * sz);
                 var sh = b.shape;
                 sh.radius = blastRadius[bi] * Mathf.Lerp(0.95f, 1.25f, warp);
             }
