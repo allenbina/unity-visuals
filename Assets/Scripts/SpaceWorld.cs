@@ -87,10 +87,38 @@ namespace DjVisuals
         Material skyMat;
         Light sunLight;
         readonly List<Transform> billboards = new List<Transform>();
-        class Rock { public Transform t; public Vector3 spin; }
+        class Rock { public Transform t; public Transform visual; public Vector3 spin; }
         readonly List<Rock> rocks = new List<Rock>();
         const float RockDrift = 5f;
-        float reveal;              // arrival glow, decays over a few seconds
+        float reveal;              // arrival glow: swells in, then decays over a few seconds
+        bool revealRising;
+
+        // speed stretch: objects elongate along Z in proportion to their speed during a transition
+        readonly List<Transform> stretch = new List<Transform>();
+        float lastStretch = 1f;
+        const float StretchPerSpeed = 0.0055f;
+        const float StretchMax = 14f;
+
+        // foreground silhouettes whipping past the camera, and the light sweep across the panels
+        readonly List<Mover> shards = new List<Mover>();
+        Material shardMat;
+        Transform sweep;
+        Material sweepMat;
+        float sweepT = -1f;
+        const float SweepDur = 1.9f;
+
+        // transition between regions: old one rushes away, new one decelerates in, camera rolls, iris closes/opens
+        bool systemGone;           // old region has left and the next has not arrived yet
+        float leaveT = -1f;        // seconds while the old region rushes past, -1 = idle
+        float arriveT = -1f;       // seconds while the new region decelerates in, -1 = idle
+        bool dropPending;          // Drop without warp: arrive once the leave finishes
+        float pulseT = -1f;        // mini warp swell for a warp-less Drop
+        float rollAngle, rollGoal, rollVel;
+        float rollBlend;           // 0 upright .. 1 upside down
+        float vigExtra;
+        const float LeaveDur = 1.1f;
+        const float ArriveDur = 3.8f;
+        const float ArriveDist = 700f;
         bool pendingArrive;        // leaving warp lands at the next destination
         float surge;               // accent kick on the engines
         float dropRelease = -1f;   // Build easing back to 0 after a Drop
@@ -139,6 +167,7 @@ namespace DjVisuals
             BuildDests();
             BuildShip();
             ApplyDestination(0);
+            BuildSweep();
 
             trailMat = Mats.Trail(new Color(3.5f, 3.8f, 4.5f, 1f));
 
@@ -258,6 +287,7 @@ namespace DjVisuals
             var vis = Mats.Prim(PrimitiveType.Sphere, root, name, Vector3.zero, Vector3.one * radius * 2f, mat).transform;
             var b = new Body { root = root, visual = vis, parent = parent, orbitR = orbitR, speed = speed, tilt = tilt, tiltYaw = Random.Range(0f, 360f), phase = phase, ecc = ecc, spin = spin };
             bodies.Add(b);
+            stretch.Add(root);
             return b;
         }
 
@@ -456,14 +486,17 @@ namespace DjVisuals
             warpTarget = on ? 1f : 0f;
             flash = Mathf.Max(flash, 0.35f);
             // Dropping out of a real jump lands somewhere new; cancelling during the charge-up does not.
-            pendingArrive = !on && warpRaw > 0.4f;
+            pendingArrive = !on && (systemGone || leaveT >= 0f);
         }
 
         void OnDrop()
         {
             if (actions.Warping) { actions.ToggleWarp(); return; }   // leaving warp already arrives somewhere new
-            flash = 1.6f;
-            ArriveNext();
+            if (leaveT >= 0f || systemGone || arriveT >= 0f) return;   // a transition is already running
+            flash = 0.6f;
+            LeaveSystem();
+            dropPending = true;
+            pulseT = 0f;
             dropFrom = actions.Build;
             dropRelease = 0f;
         }
@@ -480,6 +513,8 @@ namespace DjVisuals
         {
             warpTarget = 0f; warpRaw = 0f; prevRaw = 0f; pendingArrive = false;
             surge = 0f; dropRelease = -1f;
+            systemGone = false; leaveT = -1f; arriveT = -1f; dropPending = false; pulseT = -1f;
+            rollAngle = rollGoal = rollVel = 0f;
             ApplyDestination(0);
             reveal = 0f;
             flash = 0.8f;
@@ -506,21 +541,161 @@ namespace DjVisuals
             };
         }
 
+        void LeaveSystem()
+        {
+            if (leaveT >= 0f || systemGone) return;
+            leaveT = 0f;
+            arriveT = -1f;
+            SpawnShards(7);
+        }
+
         void ArriveNext()
         {
-            ApplyDestination((destIndex + 1) % dests.Length);
-            reveal = 1f;
+            ApplyDestination((destIndex + 1) % dests.Length);   // built at the origin, then pushed far ahead
+            systemGone = false;
+            leaveT = -1f;
+            systemRoot.position = new Vector3(0f, 0f, ArriveDist);
+            arriveT = 0f;
+            reveal = 0f;
+            revealRising = true;
+            rollGoal += 360f;   // one full barrel roll while the new region glides in
+            sweepT = 0f;
+            SpawnShards(7);
+        }
+
+        void UpdateTransition(float dt)
+        {
+            if (leaveT >= 0f)
+            {
+                leaveT += dt;
+                float k = Mathf.Clamp01(leaveT / LeaveDur);
+                systemRoot.position = new Vector3(0f, 0f, -ArriveDist * k * k * k);   // accelerates away behind us
+                if (leaveT >= LeaveDur)
+                {
+                    leaveT = -1f;
+                    systemGone = true;
+                    systemRoot.gameObject.SetActive(false);
+                    if (dropPending) { dropPending = false; ArriveNext(); }
+                }
+            }
+            if (arriveT >= 0f)
+            {
+                arriveT += dt;
+                float k = Mathf.Clamp01(arriveT / ArriveDur);
+                float inv = 1f - k;
+                float ease = 1f - inv * inv * inv * inv;   // fast at first, settles gently
+                systemRoot.position = new Vector3(0f, 0f, ArriveDist * (1f - ease));
+                if (k >= 1f) { arriveT = -1f; systemRoot.position = Vector3.zero; }
+            }
+
+            // arrival glow swells in over about a third of a second, then fades
+            if (revealRising)
+            {
+                reveal += dt * 2.5f;
+                if (reveal >= 0.85f) revealRising = false;
+            }
+            else reveal = Mathf.Max(0f, reveal - dt / 3.5f);
+
+            // iris: closes while the region is gone, opens slowly on arrival
+            float vigTarget = (systemGone || leaveT >= 0f) ? 0.35f : 0f;
+            vigExtra = Mathf.MoveTowards(vigExtra, vigTarget, dt * (vigTarget > vigExtra ? 0.7f : 0.12f));
+
+            // warp-less Drop: a mini warp swell so the swap is hidden inside streaking stars
+            if (pulseT >= 0f)
+            {
+                pulseT += dt;
+                if (pulseT > 3.8f) pulseT = -1f;
+            }
+
+            // Stretch every object in the region along Z in proportion to how fast the region is moving:
+            // streaks as it rushes away, long streaks that relax as the new region decelerates in.
+            float vel = 0f;
+            if (leaveT >= 0f)
+            {
+                float k = Mathf.Clamp01(leaveT / LeaveDur);
+                vel = 3f * ArriveDist * k * k / LeaveDur;
+            }
+            else if (arriveT >= 0f)
+            {
+                float inv = 1f - Mathf.Clamp01(arriveT / ArriveDur);
+                vel = ArriveDist * 4f * inv * inv * inv / ArriveDur;
+            }
+            float st = 1f + Mathf.Min(vel * StretchPerSpeed, StretchMax);
+            if (!Mathf.Approximately(st, lastStretch))
+            {
+                lastStretch = st;
+                foreach (var t in stretch) if (t != null) t.localScale = new Vector3(1f, 1f, st);
+            }
+
+            for (int i = shards.Count - 1; i >= 0; i--)
+            {
+                var sh = shards[i];
+                sh.t.position += sh.vel * dt;
+                if (sh.t.position.z < -30f) { Destroy(sh.t.gameObject); shards.RemoveAt(i); }
+            }
+        }
+
+        /// <summary>Dark elongated shapes that whip past close to the camera: a foreground layer for depth.</summary>
+        void SpawnShards(int n)
+        {
+            if (shardMat == null)
+                shardMat = Mats.Planet(new Color(0.02f, 0.02f, 0.03f), new Color(0.12f, 0.1f, 0.12f), 1f, 0f, 4f, new Color(0.3f, 0.4f, 0.7f), 0.5f, 140f);
+            for (int i = 0; i < n; i++)
+            {
+                float side = Random.value < 0.5f ? -1f : 1f;
+                float x = side < 0f ? Random.Range(-22f, -6f) : Random.Range(10f, 24f);   // keep the camera and ship lanes clear
+                var pivot = new GameObject("Shard").transform;
+                pivot.SetParent(transform);
+                pivot.position = new Vector3(x, Random.Range(-8f, 8f), Random.Range(2f, 30f));
+                float size = Random.Range(1.4f, 3.6f);
+                var rock = Mats.Prim(PrimitiveType.Sphere, pivot, "ShardBody", Vector3.zero, new Vector3(size, size * 0.7f, size * 1.4f), shardMat);
+                rock.transform.localRotation = Random.rotation;
+                pivot.localScale = new Vector3(1f, 1f, Random.Range(14f, 30f));   // already a streak
+                shards.Add(new Mover { t = pivot, vel = new Vector3(0f, 0f, -Random.Range(180f, 300f)) });
+            }
+        }
+
+        void BuildSweep()
+        {
+            sweepMat = Mats.Additive(new Color(2.2f, 2.8f, 4f, 0f), 1.1f);
+            sweepMat.SetFloat("_VC", 0f);
+            var q = Mats.Prim(PrimitiveType.Quad, cam.transform, "LightSweep", new Vector3(0f, 0f, 5f), Vector3.one, sweepMat);
+            sweep = q.transform;
+            sweep.gameObject.SetActive(false);
+        }
+
+        /// <summary>A soft vertical edge of light travels left to right across all three panels while the new region arrives.</summary>
+        void UpdateSweep(float dt)
+        {
+            if (sweepT < 0f) { if (sweep.gameObject.activeSelf) sweep.gameObject.SetActive(false); return; }
+            sweepT += dt;
+            float k = sweepT / SweepDur;
+            if (k >= 1f) { sweepT = -1f; sweep.gameObject.SetActive(false); return; }
+            sweep.gameObject.SetActive(true);
+
+            const float dist = 5f;
+            float halfH = dist * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
+            float halfW = halfH * cam.aspect;
+            float e = k * k * (3f - 2f * k);                        // ease in/out
+            sweep.localPosition = new Vector3(Mathf.Lerp(-1.2f, 1.2f, e) * halfW, 0f, dist);
+            sweep.localScale = new Vector3(halfW * 0.16f, halfH * 3f, 1f);
+            float a = Mathf.Sin(k * Mathf.PI);
+            sweepMat.SetColor("_Color", new Color(1.6f, 2.2f, 3.4f, 0.55f * a));
         }
 
         void ApplyDestination(int i)
         {
             destIndex = i;
             var d = dests[i];
+            systemRoot.gameObject.SetActive(true);
+            systemRoot.position = Vector3.zero;
             // clear the old region
             for (int k = systemRoot.childCount - 1; k >= 0; k--) Destroy(systemRoot.GetChild(k).gameObject);
             bodies.Clear();
             billboards.Clear();
             rocks.Clear();
+            stretch.Clear();
+            lastStretch = -1f;
 
             skyMat.SetColor("_ColA", d.a);
             skyMat.SetColor("_ColB", d.b);
@@ -563,14 +738,14 @@ namespace DjVisuals
             m.startSize = new ParticleSystem.MinMaxCurve(10f, 28f);
             m.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 0.5f, 0.2f, 0.07f), new Color(0.15f, 0.7f, 1f, 0.05f));
             m.maxParticles = 500;
-            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            m.simulationSpace = ParticleSystemSimulationSpace.Local;   // moves with the region when it slides in
             var e = ps.emission; e.rateOverTime = 1.8f;
             var sh = ps.shape;
             sh.shapeType = ParticleSystemShapeType.Box;
             sh.scale = new Vector3(170f, 55f, 100f);
             var v = ps.velocityOverLifetime;
             v.enabled = true;
-            v.space = ParticleSystemSimulationSpace.World;
+            v.space = ParticleSystemSimulationSpace.Local;
             v.x = -0.6f; v.y = 0f; v.z = 0f;
             go.GetComponent<ParticleSystemRenderer>().sharedMaterial = Mats.Additive(new Color(1.4f, 1.4f, 1.4f, 1f), 0.8f);
             ps.Play();
@@ -626,10 +801,15 @@ namespace DjVisuals
                     if (p.z > 45f || new Vector2(p.x - 3f, p.y).magnitude > 9f) break;
                 }
                 float size = rng.NextDouble() < 0.08 ? R(5f, 9f) : R(0.6f, 3.4f);
-                var rock = Mats.Prim(PrimitiveType.Sphere, systemRoot, "Rock" + i, p,
+                // unrotated pivot (so the transition can stretch it along world Z) with the tumbling rock inside
+                var pivot = new GameObject("RockPivot" + i).transform;
+                pivot.SetParent(systemRoot);
+                pivot.position = p;
+                var rock = Mats.Prim(PrimitiveType.Sphere, pivot, "Rock" + i, Vector3.zero,
                     new Vector3(size * R(0.6f, 1.4f), size * R(0.6f, 1.4f), size * R(0.6f, 1.4f)), mats[i % mats.Length]);
-                rock.transform.rotation = Random.rotation;
-                rocks.Add(new Rock { t = rock.transform, spin = new Vector3(R(-18f, 18f), R(-18f, 18f), R(-18f, 18f)) });
+                rock.transform.localRotation = Random.rotation;
+                rocks.Add(new Rock { t = pivot, visual = rock.transform, spin = new Vector3(R(-18f, 18f), R(-18f, 18f), R(-18f, 18f)) });
+                stretch.Add(pivot);
             }
             var giant = MakeBody("DistantGiant", null, new Vector3(-26f, 14f, 175f), 17f,
                 Mats.Planet(new Color(0.3f, 0.12f, 0.08f), new Color(0.95f, 0.7f, 0.45f), 8f, 0.85f, 2f, new Color(1f, 0.6f, 0.3f) * 1.6f, 1.5f, 130f),
@@ -644,11 +824,13 @@ namespace DjVisuals
             float dt = Time.deltaTime;
             float t = Time.time;
 
+            UpdateTransition(dt);
             UpdateWarp(dt);
             UpdateShip(dt, t);
             UpdateBodies(dt);
             UpdateCrossings(dt);
             UpdateCamera(t);
+            UpdateSweep(dt);
             UpdatePost();
             Shader.SetGlobalFloat("_DjWarp", warp);
         }
@@ -659,17 +841,24 @@ namespace DjVisuals
             float dur = warpTarget > 0f ? 2.4f : 3.0f;
             warpRaw = Mathf.MoveTowards(warpRaw, warpTarget, dt / dur);
             float stateWarp = warpRaw * warpRaw * (3f - 2f * warpRaw);
-            warp = Mathf.Max(stateWarp, actions.Build * 0.6f);   // Build alone pre-stretches the stars without a jump
+            float pulseWarp = 0f;
+            if (pulseT >= 0f)
+            {
+                float pk = pulseT < 0.7f ? pulseT / 0.7f : 1f - (pulseT - 0.7f) / 3.1f;
+                pk = Mathf.Clamp01(pk);
+                pulseWarp = pk * pk * (3f - 2f * pk) * 0.9f;
+            }
+            warp = Mathf.Max(stateWarp, Mathf.Max(actions.Build * 0.6f, pulseWarp));   // Build / Drop pre-stretch the stars without a full jump
 
             // The "jump": a white flash as we cross the threshold in either direction.
-            if (warpTarget > 0f && prevRaw < 0.5f && warpRaw >= 0.5f) flash = 1.6f;
-            if (warpTarget <= 0f && prevRaw > 0.4f && warpRaw <= 0.4f)
+            if (warpTarget > 0f && prevRaw < 0.5f && warpRaw >= 0.5f) { flash = 0.8f; LeaveSystem(); }
+            // Leaving warp: the next region starts gliding in while the stars are still streaking (no hard cut).
+            if (warpTarget <= 0f && pendingArrive && warpRaw <= 0.6f && leaveT < 0f)
             {
-                flash = 1.0f;
-                if (pendingArrive) { pendingArrive = false; ArriveNext(); }
+                pendingArrive = false;
+                ArriveNext();
             }
             flash = Mathf.Max(0f, flash - dt * 1.6f);
-            reveal = Mathf.Max(0f, reveal - dt / 3.5f);
             surge = Mathf.Max(0f, surge - dt * 1.4f);
             if (dropRelease >= 0f)
             {
@@ -677,7 +866,7 @@ namespace DjVisuals
                 actions.SetBuild(Mathf.Lerp(dropFrom, 0f, dropRelease / 2.5f));
                 if (dropRelease >= 2.5f) dropRelease = -1f;
             }
-            skyMat.SetFloat("_Intensity", dests[destIndex].intensity * (1f + reveal * 1.8f));
+            skyMat.SetFloat("_Intensity", dests[destIndex].intensity * (1f + reveal * 1.1f));
 
             // streaking stars
             float speed = Mathf.Lerp(50f, 430f, warp);
@@ -741,7 +930,7 @@ namespace DjVisuals
                 var sh = b.shape;
                 sh.radius = blastRadius[bi] * Mathf.Lerp(0.95f, 1.25f, warp);
             }
-            blastMat.SetColor("_Color", Color.Lerp(IdleBlast, WarpBlast, warp) * (1f + lightPulse * 0.5f));
+            blastMat.SetColor("_Color", Color.Lerp(IdleBlast, WarpBlast, warp) * (1f + lightPulse * 0.5f) * (1f - 0.6f * rollBlend));
         }
 
         void UpdateBodies(float dt)
@@ -760,9 +949,9 @@ namespace DjVisuals
             }
             foreach (var r in rocks)
             {
-                r.t.position += new Vector3(0f, 0f, -RockDrift * dt);
-                if (r.t.position.z < -14f) r.t.position += new Vector3(0f, 0f, 165f);
-                r.t.Rotate(r.spin * dt, Space.Self);
+                r.t.localPosition += new Vector3(0f, 0f, -RockDrift * dt);
+                if (r.t.localPosition.z < -14f) r.t.localPosition += new Vector3(0f, 0f, 165f);
+                r.visual.Rotate(r.spin * dt, Space.Self);
             }
             foreach (var bb in billboards) bb.rotation = Quaternion.LookRotation(bb.position - cam.transform.position);
         }
@@ -771,17 +960,24 @@ namespace DjVisuals
         {
             var shake = new Vector3(Mathf.PerlinNoise(t * 9f, 0.3f) - 0.5f, Mathf.PerlinNoise(0.7f, t * 9f) - 0.5f, 0f) * (0.12f * warp);
             cam.transform.position = CamBase + shake + new Vector3(0, 0, -warp * 0.8f);
-            cam.transform.rotation = Quaternion.LookRotation(CamLook - cam.transform.position);
-            cam.fieldOfView = FovBase + warp * 14f + flash * 3f + reveal * reveal * 8f;
+
+            // Barrel roll: smooth start and stop. While rolled, look at the ship so it stays near the middle of the frame.
+            rollAngle = Mathf.SmoothDamp(rollAngle, rollGoal, ref rollVel, 1.5f);
+            float rb = (1f - Mathf.Cos(rollAngle * Mathf.Deg2Rad)) * 0.5f;   // 0 upright .. 1 upside down
+            var look = Vector3.Lerp(CamLook, Vector3.zero, rb);
+            float sway = Mathf.Sin(t * 0.7f) * 3.5f * warp;                  // gentle wobble while in warp
+            cam.transform.rotation = Quaternion.LookRotation(look - cam.transform.position) * Quaternion.AngleAxis(rollAngle + sway, Vector3.forward);
+            cam.fieldOfView = FovBase + warp * 14f + flash * 3f + reveal * reveal * 6f;
+            rollBlend = rb;
         }
 
         void UpdatePost()
         {
-            fx.Bloom.intensity.value = 1.1f + warp * 2.2f + flash * 4f + reveal * 1.5f;
-            fx.Adjust.postExposure.value = flash * 1.8f + warp * 0.25f + reveal * 0.5f;
+            fx.Bloom.intensity.value = 1.1f + warp * 2.2f + flash * 3f + reveal * 1.0f;
+            fx.Adjust.postExposure.value = flash * 1.2f + warp * 0.25f + reveal * 0.3f;
             fx.Lens.intensity.value = warp * 0.7f;
             fx.Chroma.intensity.value = warp * 0.9f + flash * 0.4f + reveal * 0.3f;
-            fx.Vig.intensity.value = 0.2f + warp * 0.3f;
+            fx.Vig.intensity.value = 0.2f + warp * 0.3f + vigExtra;
         }
 
         // =================== satellites and shooting stars ===================

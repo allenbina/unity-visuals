@@ -32,21 +32,22 @@ namespace DjVisuals
             steps = new[]
             {
                 new Step { t = 0.3f, kind = "sync" },
-                new Step { t = 0.4f, kind = "shot", arg = "01_home_beat" },
+                new Step { t = 0.4f, kind = "shot", arg = "01_home" },
                 new Step { t = 3.0f, kind = "warp" },
-                new Step { t = 5.0f, kind = "shot", arg = "02_warp" },
-                new Step { t = 8.0f, kind = "warp" },                 // exit: arrives at Ember Nebula ~1.8s later
-                new Step { t = 10.3f, kind = "shot", arg = "03_ember_reveal" },
-                new Step { t = 14.0f, kind = "shot", arg = "04_ember" },
-                new Step { t = 14.5f, kind = "drop" },                // instant jump to Twin Suns
-                new Step { t = 15.2f, kind = "shot", arg = "05_twin_reveal" },
-                new Step { t = 19.0f, kind = "shot", arg = "06_twin" },
-                new Step { t = 19.5f, kind = "build" },               // tension: stars pre-stretch
-                new Step { t = 21.0f, kind = "shot", arg = "07_build" },
-                new Step { t = 21.5f, kind = "drop" },                // Shard Field
-                new Step { t = 22.2f, kind = "shot", arg = "08_shard_reveal" },
-                new Step { t = 27.0f, kind = "shot", arg = "09_shard" },
-                new Step { t = 27.5f, kind = "quit" },
+                new Step { t = 4.7f, kind = "shot", arg = "02_leaving" },
+                new Step { t = 6.2f, kind = "shot", arg = "03_empty_warp" },
+                new Step { t = 8.0f, kind = "warp" },                 // exit: next region glides in
+                new Step { t = 9.5f, kind = "shot", arg = "04_arrive_a" },
+                new Step { t = 10.4f, kind = "shot", arg = "04_arrive_b" },
+                new Step { t = 11.3f, kind = "shot", arg = "04_arrive_c" },
+                new Step { t = 12.4f, kind = "shot", arg = "04_arrive_d" },
+                new Step { t = 16.0f, kind = "shot", arg = "05_ember" },
+                new Step { t = 16.5f, kind = "drop" },                // warp-less jump
+                new Step { t = 17.3f, kind = "shot", arg = "06_drop_leaving" },
+                new Step { t = 18.6f, kind = "shot", arg = "06_drop_arrive_a" },
+                new Step { t = 19.8f, kind = "shot", arg = "06_drop_arrive_b" },
+                new Step { t = 23.0f, kind = "shot", arg = "07_twin" },
+                new Step { t = 23.5f, kind = "quit" },
             };
         }
 

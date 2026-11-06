@@ -71,7 +71,7 @@ Shader "DjVisuals/Planet"
                 float3 albedo = lerp(_ColA.rgb, _ColB.rgb, saturate(mixv));
                 albedo *= 0.75 + 0.5 * dj_fbm(p * _Noise * 3.0);
 
-                float3 lit = albedo * (ndl * 1.05 + 0.025);
+                float3 lit = albedo * (ndl * 1.05 + 0.075);
 
                 float3 v = normalize(GetWorldSpaceViewDir(i.posWS));
                 float fres = pow(1.0 - saturate(dot(n, v)), _AtmoPow);
