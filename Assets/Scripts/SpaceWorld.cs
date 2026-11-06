@@ -52,9 +52,18 @@ namespace DjVisuals
         float flash;           // white-out, decays
 
         // camera rig
-        static readonly Vector3 CamBase = new Vector3(6.5f, 1.8f, -8f);
-        static readonly Vector3 CamLook = new Vector3(0f, 0.3f, 3f);
-        const float FovBase = 30f;
+        // Camera angles and ship placements that Accent cycles through. The ship is placed in the left, center or
+        // right third of the wide view (one panel each) relative to whichever angle the camera is moving to.
+        class CamPose { public Vector3 pos, look; public float fov; }
+        CamPose[] poses;
+        int poseIdx;
+        int slotIdx;
+        static readonly float[] SlotOrder = { 0f, 1f, 2f };   // indexes into slotFrac: 0 home/center, 1 left panel, 2 right panel
+        float[] slotFrac;
+        Vector3 camPosS, camPosVel, camLookS, camLookVel;
+        float camFovS, camFovVel;
+        Vector3 shipHome, shipTarget, shipVel;
+        const float WideAspect = 3840f / 720f;
 
         // orbits
         class Body
@@ -96,8 +105,8 @@ namespace DjVisuals
         // speed stretch: objects elongate along Z in proportion to their speed during a transition
         readonly List<Transform> stretch = new List<Transform>();
         float lastStretch = 1f;
-        const float StretchPerSpeed = 0.0055f;
-        const float StretchMax = 14f;
+        const float StretchPerSpeed = 0.011f;
+        const float StretchMax = 30f;
 
         // foreground silhouettes whipping past the camera, and the light sweep across the panels
         readonly List<Mover> shards = new List<Mover>();
@@ -141,8 +150,10 @@ namespace DjVisuals
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.075f, 0.085f, 0.13f);
 
-            cam.transform.position = CamBase;
-            cam.transform.rotation = Quaternion.LookRotation(CamLook - CamBase);
+            BuildPoses();
+            camPosS = poses[0].pos; camLookS = poses[0].look; camFovS = poses[0].fov;
+            cam.transform.position = camPosS;
+            cam.transform.rotation = Quaternion.LookRotation(camLookS - camPosS);
 
             var sun = sunLight = new GameObject("Sun").AddComponent<Light>();
             sun.transform.SetParent(transform);
@@ -474,6 +485,49 @@ namespace DjVisuals
             blastRadius.Add(radius);
         }
 
+        // =================== camera angles and ship slots ===================
+
+        void BuildPoses()
+        {
+            poses = new[]
+            {
+                new CamPose { pos = new Vector3(6.5f, 1.8f, -8f),    look = new Vector3(0f, 0.3f, 3f), fov = 30f },   // the original three-quarter chase
+                new CamPose { pos = new Vector3(-6.5f, 0.8f, -8.5f), look = new Vector3(0f, 0.4f, 3f), fov = 30f },   // low, from the left
+                new CamPose { pos = new Vector3(0.5f, 6.0f, -10.5f), look = new Vector3(0f, 0f, 4f),   fov = 32f },   // high, behind, looking down
+                new CamPose { pos = new Vector3(8.5f, -0.8f, -4.5f), look = new Vector3(0f, 0.3f, 4f), fov = 34f },   // close and low, nacelles up front
+                new CamPose { pos = new Vector3(-2.5f, 2.5f, -17f),  look = new Vector3(0f, 0.3f, 4f), fov = 28f },   // far wide chase
+            };
+            // The first pose with the ship at the origin is the home layout; slotFrac[0] reproduces it exactly.
+            var p0 = poses[0];
+            var fwd = (p0.look - p0.pos).normalized;
+            var right = Vector3.Cross(Vector3.up, fwd).normalized;
+            float d = Vector3.Dot(-p0.pos, fwd);
+            float halfW = d * Mathf.Tan(p0.fov * 0.5f * Mathf.Deg2Rad) * WideAspect;
+            float homeFrac = Vector3.Dot(-(p0.pos + fwd * d), right) / halfW;
+            slotFrac = new[] { homeFrac, -0.62f, 0.62f };
+            shipHome = shipTarget = Vector3.zero;
+        }
+
+        /// <summary>World position that makes the ship appear at screen-x fraction frac (-1 left edge .. 1 right edge) for a camera pose.</summary>
+        Vector3 SlotPos(CamPose p, float frac)
+        {
+            var fwd = (p.look - p.pos).normalized;
+            var right = Vector3.Cross(Vector3.up, fwd).normalized;
+            var up = Vector3.Cross(fwd, right);
+            float d = Vector3.Dot(-p.pos, fwd);   // how deep the ship's default spot sits along the view axis
+            var c = p.pos + fwd * d;
+            float halfW = d * Mathf.Tan(p.fov * 0.5f * Mathf.Deg2Rad) * WideAspect;
+            float yOff = Vector3.Dot(-c, up);
+            return c + right * (frac * halfW) + up * yOff;
+        }
+
+        void NextShot()
+        {
+            poseIdx = (poseIdx + 1) % poses.Length;
+            slotIdx = (slotIdx + 1) % slotFrac.Length;
+            shipTarget = SlotPos(poses[poseIdx], slotFrac[slotIdx]);
+        }
+
         // =================== actions ===================
 
         void Flare()
@@ -507,6 +561,7 @@ namespace DjVisuals
             SpawnShootingStar();
             SpawnShootingStar();
             Flare();
+            NextShot();   // the ship glides to another panel while the camera swings to a new angle
         }
 
         void OnReset()
@@ -518,6 +573,8 @@ namespace DjVisuals
             ApplyDestination(0);
             reveal = 0f;
             flash = 0.8f;
+            poseIdx = 0; slotIdx = 0;
+            shipTarget = Vector3.zero;
         }
 
         // =================== destinations ===================
@@ -558,7 +615,6 @@ namespace DjVisuals
             arriveT = 0f;
             reveal = 0f;
             revealRising = true;
-            rollGoal += 360f;   // one full barrel roll while the new region glides in
             sweepT = 0f;
             SpawnShards(7);
         }
@@ -885,8 +941,10 @@ namespace DjVisuals
         void UpdateShip(float dt, float t)
         {
             float jitter = warp * 0.03f;
-            ship.localPosition = new Vector3(Mathf.Sin(t * 47f) * jitter, Mathf.Sin(t * 0.8f) * 0.08f + Mathf.Sin(t * 53f) * jitter, 0);
-            ship.localRotation = Quaternion.Euler(Mathf.Sin(t * 0.5f) * 0.8f, 0, Mathf.Sin(t * 0.7f) * 1.5f);
+            shipHome = Vector3.SmoothDamp(shipHome, shipTarget, ref shipVel, 1.1f);
+            float bank = Mathf.Clamp(-shipVel.x * 1.1f, -28f, 28f);   // lean into the move
+            ship.localPosition = shipHome + new Vector3(Mathf.Sin(t * 47f) * jitter, Mathf.Sin(t * 0.8f) * 0.08f + Mathf.Sin(t * 53f) * jitter, 0);
+            ship.localRotation = Quaternion.Euler(Mathf.Sin(t * 0.5f) * 0.8f, 0, Mathf.Sin(t * 0.7f) * 1.5f + bank);
 
             float lightPulse = 0f;
             for (int i = 0; i < ringCount; i++)
@@ -958,17 +1016,16 @@ namespace DjVisuals
 
         void UpdateCamera(float t)
         {
-            var shake = new Vector3(Mathf.PerlinNoise(t * 9f, 0.3f) - 0.5f, Mathf.PerlinNoise(0.7f, t * 9f) - 0.5f, 0f) * (0.12f * warp);
-            cam.transform.position = CamBase + shake + new Vector3(0, 0, -warp * 0.8f);
+            var pose = poses[poseIdx];
+            camPosS = Vector3.SmoothDamp(camPosS, pose.pos, ref camPosVel, 1.2f);
+            camLookS = Vector3.SmoothDamp(camLookS, pose.look, ref camLookVel, 1.2f);
+            camFovS = Mathf.SmoothDamp(camFovS, pose.fov, ref camFovVel, 1.2f);
 
-            // Barrel roll: smooth start and stop. While rolled, look at the ship so it stays near the middle of the frame.
-            rollAngle = Mathf.SmoothDamp(rollAngle, rollGoal, ref rollVel, 1.5f);
-            float rb = (1f - Mathf.Cos(rollAngle * Mathf.Deg2Rad)) * 0.5f;   // 0 upright .. 1 upside down
-            var look = Vector3.Lerp(CamLook, Vector3.zero, rb);
-            float sway = Mathf.Sin(t * 0.7f) * 3.5f * warp;                  // gentle wobble while in warp
-            cam.transform.rotation = Quaternion.LookRotation(look - cam.transform.position) * Quaternion.AngleAxis(rollAngle + sway, Vector3.forward);
-            cam.fieldOfView = FovBase + warp * 14f + flash * 3f + reveal * reveal * 6f;
-            rollBlend = rb;
+            var shake = new Vector3(Mathf.PerlinNoise(t * 9f, 0.3f) - 0.5f, Mathf.PerlinNoise(0.7f, t * 9f) - 0.5f, 0f) * (0.12f * warp);
+            cam.transform.position = camPosS + shake + new Vector3(0, 0, -warp * 0.8f);
+            float sway = Mathf.Sin(t * 0.7f) * 3.5f * warp;   // gentle wobble while in warp (no barrel roll)
+            cam.transform.rotation = Quaternion.LookRotation(camLookS - cam.transform.position) * Quaternion.AngleAxis(sway, Vector3.forward);
+            cam.fieldOfView = camFovS + warp * 14f + flash * 3f + reveal * reveal * 6f;
         }
 
         void UpdatePost()

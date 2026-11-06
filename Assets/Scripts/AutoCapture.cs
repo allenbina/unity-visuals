@@ -33,21 +33,24 @@ namespace DjVisuals
             {
                 new Step { t = 0.3f, kind = "sync" },
                 new Step { t = 0.4f, kind = "shot", arg = "01_home" },
-                new Step { t = 3.0f, kind = "warp" },
-                new Step { t = 4.7f, kind = "shot", arg = "02_leaving" },
-                new Step { t = 6.2f, kind = "shot", arg = "03_empty_warp" },
-                new Step { t = 8.0f, kind = "warp" },                 // exit: next region glides in
-                new Step { t = 9.5f, kind = "shot", arg = "04_arrive_a" },
-                new Step { t = 10.4f, kind = "shot", arg = "04_arrive_b" },
-                new Step { t = 11.3f, kind = "shot", arg = "04_arrive_c" },
-                new Step { t = 12.4f, kind = "shot", arg = "04_arrive_d" },
-                new Step { t = 16.0f, kind = "shot", arg = "05_ember" },
-                new Step { t = 16.5f, kind = "drop" },                // warp-less jump
-                new Step { t = 17.3f, kind = "shot", arg = "06_drop_leaving" },
-                new Step { t = 18.6f, kind = "shot", arg = "06_drop_arrive_a" },
-                new Step { t = 19.8f, kind = "shot", arg = "06_drop_arrive_b" },
-                new Step { t = 23.0f, kind = "shot", arg = "07_twin" },
-                new Step { t = 23.5f, kind = "quit" },
+                new Step { t = 1.0f, kind = "accent" },
+                new Step { t = 1.5f, kind = "shot", arg = "02_accent_mid" },
+                new Step { t = 3.2f, kind = "shot", arg = "02b_pose1_left" },
+                new Step { t = 3.5f, kind = "accent" },
+                new Step { t = 5.4f, kind = "shot", arg = "03_pose2_right" },
+                new Step { t = 5.8f, kind = "accent" },
+                new Step { t = 7.6f, kind = "shot", arg = "04_pose3_center" },
+                new Step { t = 8.0f, kind = "accent" },
+                new Step { t = 9.8f, kind = "shot", arg = "05_pose4_left" },
+                new Step { t = 10.2f, kind = "accent" },
+                new Step { t = 12.0f, kind = "shot", arg = "06_pose0_right" },
+                new Step { t = 12.5f, kind = "warp" },
+                new Step { t = 14.8f, kind = "shot", arg = "07_warp" },
+                new Step { t = 15.3f, kind = "warp" },                // exit: next region streams in (no roll)
+                new Step { t = 16.9f, kind = "shot", arg = "08_arrive_a" },
+                new Step { t = 18.0f, kind = "shot", arg = "08_arrive_b" },
+                new Step { t = 21.0f, kind = "shot", arg = "09_settled" },
+                new Step { t = 21.5f, kind = "quit" },
             };
         }
 
@@ -67,6 +70,7 @@ namespace DjVisuals
                 {
                     case "sync": Actions.SetBpm(120); Actions.Sync(); break;
                     case "warp": Actions.ToggleWarp(); break;
+                    case "accent": Actions.FireAccent(); break;
                     case "drop": Actions.FireDrop(); break;
                     case "build": Actions.SetBuild(0.8f); break;
                     case "sats": FindFirstObjectByType<SpaceWorld>().DebugSpawnSatellites(); break;

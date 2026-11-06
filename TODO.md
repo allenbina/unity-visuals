@@ -9,7 +9,8 @@ Not in priority order unless noted.
 - [ ] Next destination idea: black hole with planets orbiting it and trails of matter falling in (accretion disc, lensing)
 - [x] Layered region transition (speed stretch, roll, iris, light sweep, foreground shards)
 - [ ] Tune destination order/length; let the performer pick a destination directly
-- [ ] Transition knobs worth exposing: roll on/off, stretch amount, sweep direction
+- [ ] Transition knobs worth exposing: stretch amount, sweep direction
+- [ ] Accent camera/ship moves: pick angles and panels by hand, or tie to beat counts
 - [ ] Progression: planets / escort ships / galaxies that persist until Reset
 - [x] URP + bloom, procedural nebula sky, orbiting planets/moons/sub-moons, satellites, shooting stars
 - [x] Warp: toggle with W (blast, star streaks, fisheye, chromatic aberration)
