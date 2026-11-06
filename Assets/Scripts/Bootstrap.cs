@@ -75,7 +75,8 @@ namespace DjVisuals
             strip.Actions = actions;
             strip.Wide = rt;
             strip.PanelCount = PanelCount;
-            strip.ShowAdvanced = !UseSpace;   // hide controls that aren't wired to the space world yet
+            strip.ShowAdvanced = !UseSpace;   // Progress is rain-only for now
+            strip.ShowCore = UseSpace;        // Accent / Drop / Reset / Build are wired in space
             strip.ShowWarp = UseSpace;
 
             var capDir = AutoCapture.ArgDir();

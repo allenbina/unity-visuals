@@ -13,6 +13,7 @@ namespace DjVisuals
         public VisualActions Actions;
         public RenderTexture Wide;
         public int PanelCount = 3;
+        public bool ShowCore = false;      // Accent / Drop / Reset / Build, without Progress
         public bool ShowWarp = false;      // Warp button (space world)
         public bool ShowAdvanced = true;   // Accent/Build/Drop/Progress/Reset; off while a world only handles the beat
 
@@ -64,11 +65,11 @@ namespace DjVisuals
                 if (GUILayout.Button(Actions.Warping ? "WARP ON (W)" : "Warp (W)", GUILayout.Width(100))) Actions.ToggleWarp();
                 GUI.backgroundColor = old;
             }
-            if (ShowAdvanced)
+            if (ShowCore || ShowAdvanced)
             {
                 if (GUILayout.Button("Accent (A)", GUILayout.Width(90))) Actions.FireAccent();
                 if (GUILayout.Button("Drop (D)", GUILayout.Width(80))) Actions.FireDrop();
-                if (GUILayout.Button("Progress (P)  " + Actions.Progression, GUILayout.Width(120))) Actions.Advance();
+                if (ShowAdvanced && GUILayout.Button("Progress (P)  " + Actions.Progression, GUILayout.Width(120))) Actions.Advance();
                 if (GUILayout.Button("Reset (R)", GUILayout.Width(80))) Actions.DoReset();
             }
             GUILayout.FlexibleSpace();
@@ -77,7 +78,7 @@ namespace DjVisuals
 
             GUILayout.Space(6);
             GUILayout.BeginHorizontal();
-            if (ShowAdvanced)
+            if (ShowCore || ShowAdvanced)
             {
                 GUILayout.Label("Build (Up/Down)", GUILayout.Width(110));
                 Actions.SetBuild(GUILayout.HorizontalSlider(Actions.Build, 0f, 1f, GUILayout.Width(300)));
@@ -87,6 +88,8 @@ namespace DjVisuals
             GUILayout.Label(Actions.Clock.Running
                 ? "Synced @ " + Actions.Clock.Bpm.ToString("0.##", CultureInfo.InvariantCulture) + " BPM"
                 : "Not synced: press Sync on a downbeat");
+            GUILayout.FlexibleSpace();
+            if (!string.IsNullOrEmpty(Actions.Status)) GUILayout.Label(Actions.Status);
             GUILayout.EndHorizontal();
 
             GUILayout.EndArea();
@@ -120,7 +123,12 @@ namespace DjVisuals
             var e = Event.current;
             if (e.type != EventType.KeyDown) return;
             if (GUI.GetNameOfFocusedControl() == "bpm") return; // typing a tempo
-            if (!ShowAdvanced && e.keyCode != KeyCode.Space && e.keyCode != KeyCode.B && !(ShowWarp && e.keyCode == KeyCode.W)) return;
+            bool core = ShowCore || ShowAdvanced;
+            bool allowed = e.keyCode == KeyCode.Space || e.keyCode == KeyCode.B
+                || (ShowWarp && e.keyCode == KeyCode.W)
+                || (core && (e.keyCode == KeyCode.A || e.keyCode == KeyCode.D || e.keyCode == KeyCode.R || e.keyCode == KeyCode.UpArrow || e.keyCode == KeyCode.DownArrow))
+                || (ShowAdvanced && e.keyCode == KeyCode.P);
+            if (!allowed) return;
             switch (e.keyCode)
             {
                 case KeyCode.Space: Actions.Sync(); break;

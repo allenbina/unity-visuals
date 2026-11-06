@@ -23,6 +23,9 @@ namespace DjVisuals
 
         public bool Warping { get; private set; }
 
+        /// <summary>One line the active world can show in the control strip (e.g. the current destination).</summary>
+        public string Status = "";
+
         // Not Awake: Bootstrap assigns Clock after AddComponent, so Awake would see null.
         void Start() { Clock.OnBeat += i => Beat?.Invoke(i); }
 

@@ -2,11 +2,13 @@
 
 Proof of concept: a beat-synced visual world cropped into three virtual panels on a second monitor, played against a separately running track. Full spec: [Unity-DJ-Visuals-Handoff.md](Unity-DJ-Visuals-Handoff.md).
 
-Current world: **space** (`SpaceWorld.cs`), on **URP with HDR bloom**. Wired controls: BPM, Sync, Beat (engine rings ripple-flare on the beat) and **Warp** (W). The other controls are hidden for now. Switch `UseSpace` in `Bootstrap.cs` to run the rain world instead.
+Current world: **space** (`SpaceWorld.cs`), on **URP with HDR bloom**. Wired controls: BPM, Sync, Beat (engine nozzles ripple-flare on the beat), Warp, Build, Drop, Accent, Reset. Progress is rain-only for now. Switch `UseSpace` in `Bootstrap.cs` to run the rain world instead.
 
 Always moving, no controls needed: a gas giant with a ring, a moon with two sub-moons, a second moon, an ice planet with a ring and moon, satellites crossing the frame, shooting stars, a drifting procedural nebula sky, and a sustained engine flame.
 
-**Warp (W):** charge, white flash, star streaks, fisheye bend, chromatic aberration, big sustained blast; press again to drop out.
+**Warp (W):** charge, white flash, star streaks, fisheye bend, chromatic aberration, big sustained blast. Dropping out of a real jump lands in the **next destination** (cycle: Home System > Ember Nebula > Twin Suns > Shard Field), shown in the control strip. The arrival fades up from a white-out.
+
+**Build / Drop / Accent / Reset (space):** Build (Up/Down or slider) pre-stretches the stars and swells the engines without jumping. Drop (D) jumps to the next destination, then Build eases back to 0 (if you are in warp, Drop is the same as leaving warp). Accent (A) fires shooting stars and an engine surge. Reset (R) returns to the Home System.
 
 Models: the hero ship is Quaternius's **Executioner** (CC0) and the crossing satellites are **NASA** models (Aqua, CALIPSO, CubeSat, GOES, ISS, JWST, Juno). Sources and licences are in `Assets/Resources/Models/LICENSES.md`. Planets, nebula, stars, rings and all effects are generated in code (procedural shaders in `Assets/Shaders`). If the models are missing the code falls back to the old primitive ship and satellites.
 

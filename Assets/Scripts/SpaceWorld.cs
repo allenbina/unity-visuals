@@ -70,6 +70,32 @@ namespace DjVisuals
         class Mover { public Transform t; public Vector3 vel; public Vector3 spin; public float life; public Material lamp; public float blink; public TrailRenderer trail; }
         readonly List<Mover> sats = new List<Mover>();
         readonly List<Mover> shooters = new List<Mover>();
+        // destinations (hyperspace lands in a new region)
+        class Dest
+        {
+            public string name;
+            public Color a, b, c;                  // sky cloud colors
+            public float intensity, cover, scale, seed;
+            public Color sunColor, ambient;
+            public float sunIntensity;
+            public Vector3 sunEuler;
+            public System.Action build;
+        }
+        Dest[] dests;
+        int destIndex;
+        Transform systemRoot;
+        Material skyMat;
+        Light sunLight;
+        readonly List<Transform> billboards = new List<Transform>();
+        class Rock { public Transform t; public Vector3 spin; }
+        readonly List<Rock> rocks = new List<Rock>();
+        const float RockDrift = 5f;
+        float reveal;              // arrival glow, decays over a few seconds
+        bool pendingArrive;        // leaving warp lands at the next destination
+        float surge;               // accent kick on the engines
+        float dropRelease = -1f;   // Build easing back to 0 after a Drop
+        float dropFrom;
+
         float nextSat = 2f;
         float nextShooter = 1.5f;
         Material trailMat;
@@ -81,7 +107,8 @@ namespace DjVisuals
             fx = postFx;
 
             // Nebula skybox
-            RenderSettings.skybox = Mats.NebulaSky();
+            skyMat = Mats.NebulaSky();
+            RenderSettings.skybox = skyMat;
             cam.clearFlags = CameraClearFlags.Skybox;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.075f, 0.085f, 0.13f);
@@ -89,7 +116,7 @@ namespace DjVisuals
             cam.transform.position = CamBase;
             cam.transform.rotation = Quaternion.LookRotation(CamLook - CamBase);
 
-            var sun = new GameObject("Sun").AddComponent<Light>();
+            var sun = sunLight = new GameObject("Sun").AddComponent<Light>();
             sun.transform.SetParent(transform);
             sun.type = LightType.Directional;
             sun.color = new Color(1f, 0.93f, 0.85f);
@@ -107,13 +134,19 @@ namespace DjVisuals
 
             BuildStars();
             BuildWarpStars();
-            BuildSystem();
+            systemRoot = new GameObject("System").transform;
+            systemRoot.SetParent(transform);
+            BuildDests();
             BuildShip();
+            ApplyDestination(0);
 
             trailMat = Mats.Trail(new Color(3.5f, 3.8f, 4.5f, 1f));
 
             actions.Beat += _ => Flare();
             actions.WarpChanged += OnWarpChanged;
+            actions.Drop += OnDrop;
+            actions.Accent += OnAccent;
+            actions.ResetRequested += OnReset;
         }
 
         // =================== construction ===================
@@ -187,7 +220,7 @@ namespace DjVisuals
             warpStars.Play();
         }
 
-        void BuildSystem()
+        void BuildHome()
         {
             // Gas giant (left) -> big moon -> two sub-moons; a second moon; a ringed ice planet (right) with its own moon.
             var gas = MakeBody("GasGiant", null, new Vector3(-36f, 7f, 78f), 12f,
@@ -220,7 +253,7 @@ namespace DjVisuals
                       float orbitR, float speed, float tilt, float phase, float ecc, float spin)
         {
             var root = new GameObject(name + "_root").transform;
-            root.SetParent(transform);
+            root.SetParent(systemRoot);
             root.position = pos;
             var vis = Mats.Prim(PrimitiveType.Sphere, root, name, Vector3.zero, Vector3.one * radius * 2f, mat).transform;
             var b = new Body { root = root, visual = vis, parent = parent, orbitR = orbitR, speed = speed, tilt = tilt, tiltYaw = Random.Range(0f, 360f), phase = phase, ecc = ecc, spin = spin };
@@ -422,6 +455,186 @@ namespace DjVisuals
         {
             warpTarget = on ? 1f : 0f;
             flash = Mathf.Max(flash, 0.35f);
+            // Dropping out of a real jump lands somewhere new; cancelling during the charge-up does not.
+            pendingArrive = !on && warpRaw > 0.4f;
+        }
+
+        void OnDrop()
+        {
+            if (actions.Warping) { actions.ToggleWarp(); return; }   // leaving warp already arrives somewhere new
+            flash = 1.6f;
+            ArriveNext();
+            dropFrom = actions.Build;
+            dropRelease = 0f;
+        }
+
+        void OnAccent()
+        {
+            surge = 1f;
+            SpawnShootingStar();
+            SpawnShootingStar();
+            Flare();
+        }
+
+        void OnReset()
+        {
+            warpTarget = 0f; warpRaw = 0f; prevRaw = 0f; pendingArrive = false;
+            surge = 0f; dropRelease = -1f;
+            ApplyDestination(0);
+            reveal = 0f;
+            flash = 0.8f;
+        }
+
+        // =================== destinations ===================
+
+        void BuildDests()
+        {
+            dests = new[]
+            {
+                new Dest { name = "Home System", a = new Color(0.05f, 0.12f, 0.55f), b = new Color(0.65f, 0.12f, 0.45f), c = new Color(0.15f, 0.55f, 0.75f),
+                    intensity = 1.3f, cover = 0f, scale = 1.7f, seed = 0f, sunColor = new Color(1f, 0.93f, 0.85f), sunIntensity = 1f,
+                    sunEuler = new Vector3(18f, 55f, 0f), ambient = new Color(0.075f, 0.085f, 0.13f), build = BuildHome },
+                new Dest { name = "Ember Nebula", a = new Color(0.9f, 0.3f, 0.05f), b = new Color(0.5f, 0.06f, 0.18f), c = new Color(0.04f, 0.6f, 0.85f),
+                    intensity = 1.05f, cover = 0.12f, scale = 1.2f, seed = 5f, sunColor = new Color(1f, 0.8f, 0.7f), sunIntensity = 0.8f,
+                    sunEuler = new Vector3(25f, -60f, 0f), ambient = new Color(0.1f, 0.07f, 0.08f), build = BuildEmberNebula },
+                new Dest { name = "Twin Suns", a = new Color(0.4f, 0.12f, 0.03f), b = new Color(0.08f, 0.14f, 0.55f), c = new Color(1f, 0.7f, 0.3f),
+                    intensity = 1.0f, cover = -0.04f, scale = 2.2f, seed = 11f, sunColor = new Color(1f, 0.85f, 0.7f), sunIntensity = 1.2f,
+                    sunEuler = new Vector3(10f, 90f, 0f), ambient = new Color(0.09f, 0.07f, 0.1f), build = BuildTwinSuns },
+                new Dest { name = "Shard Field", a = new Color(0.12f, 0.08f, 0.22f), b = new Color(0.5f, 0.2f, 0.1f), c = new Color(0.2f, 0.3f, 0.5f),
+                    intensity = 0.85f, cover = 0f, scale = 1.7f, seed = 23f, sunColor = new Color(1f, 0.95f, 0.9f), sunIntensity = 1.5f,
+                    sunEuler = new Vector3(12f, -105f, 0f), ambient = new Color(0.06f, 0.06f, 0.09f), build = BuildAsteroidField },
+            };
+        }
+
+        void ArriveNext()
+        {
+            ApplyDestination((destIndex + 1) % dests.Length);
+            reveal = 1f;
+        }
+
+        void ApplyDestination(int i)
+        {
+            destIndex = i;
+            var d = dests[i];
+            // clear the old region
+            for (int k = systemRoot.childCount - 1; k >= 0; k--) Destroy(systemRoot.GetChild(k).gameObject);
+            bodies.Clear();
+            billboards.Clear();
+            rocks.Clear();
+
+            skyMat.SetColor("_ColA", d.a);
+            skyMat.SetColor("_ColB", d.b);
+            skyMat.SetColor("_ColC", d.c);
+            skyMat.SetFloat("_Cover", d.cover);
+            skyMat.SetFloat("_Scale", d.scale);
+            skyMat.SetFloat("_Seed", d.seed);
+            sunLight.color = d.sunColor;
+            sunLight.intensity = d.sunIntensity;
+            sunLight.transform.rotation = Quaternion.Euler(d.sunEuler);
+            RenderSettings.ambientLight = d.ambient;
+
+            d.build();   // may override the sun direction
+            actions.Status = "Destination: " + d.name;
+        }
+
+        Transform Halo(Transform parent, float size, Color hdr)
+        {
+            var mat = Mats.Additive(hdr, 2f);
+            mat.SetFloat("_VC", 0f);
+            var q = Mats.Prim(PrimitiveType.Quad, parent, "Halo", Vector3.zero, new Vector3(size, size, 1f), mat);
+            billboards.Add(q.transform);
+            return q.transform;
+        }
+
+        void BuildEmberNebula()
+        {
+            // Big soft dust clouds drifting past at different depths: parallax makes the camera feel inside the nebula.
+            var go = new GameObject("NebulaDust");
+            go.transform.SetParent(systemRoot);
+            go.transform.position = new Vector3(0f, 0f, 55f);
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var m = ps.main;
+            m.loop = true;
+            m.prewarm = true;
+            m.playOnAwake = false;
+            m.startLifetime = 90f;
+            m.startSpeed = 0f;
+            m.startSize = new ParticleSystem.MinMaxCurve(10f, 28f);
+            m.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 0.5f, 0.2f, 0.07f), new Color(0.15f, 0.7f, 1f, 0.05f));
+            m.maxParticles = 500;
+            m.simulationSpace = ParticleSystemSimulationSpace.World;
+            var e = ps.emission; e.rateOverTime = 1.8f;
+            var sh = ps.shape;
+            sh.shapeType = ParticleSystemShapeType.Box;
+            sh.scale = new Vector3(170f, 55f, 100f);
+            var v = ps.velocityOverLifetime;
+            v.enabled = true;
+            v.space = ParticleSystemSimulationSpace.World;
+            v.x = -0.6f; v.y = 0f; v.z = 0f;
+            go.GetComponent<ParticleSystemRenderer>().sharedMaterial = Mats.Additive(new Color(1.4f, 1.4f, 1.4f, 1f), 0.8f);
+            ps.Play();
+
+            var giant = MakeBody("EmberGiant", null, new Vector3(16f, 9f, 108f), 8f,
+                Mats.Planet(new Color(0.5f, 0.12f, 0.25f), new Color(1.0f, 0.55f, 0.3f), 6f, 0.8f, 2.2f, new Color(1f, 0.4f, 0.5f) * 1.8f, 1.5f, 61f),
+                0f, 0f, 0f, 0f, 0f, 3f);
+            MakeBody("EmberMoon", giant, default, 1.6f,
+                Mats.Planet(new Color(0.3f, 0.2f, 0.2f), new Color(0.8f, 0.6f, 0.5f), 1f, 0.05f, 5f, new Color(1f, 0.6f, 0.5f), 0.5f, 70f),
+                17f, 10f, 15f, 40f, 0.05f, 8f);
+        }
+
+        void BuildTwinSuns()
+        {
+            var orange = MakeBody("OrangeSun", null, new Vector3(-48f, 16f, 150f), 10f, Mats.Unlit(new Color(7f, 2.6f, 0.5f)), 0f, 0f, 0f, 0f, 0f, 0f);
+            var blue = MakeBody("BlueSun", null, new Vector3(58f, -3f, 175f), 5.5f, Mats.Unlit(new Color(2.5f, 4.5f, 9f)), 0f, 0f, 0f, 0f, 0f, 0f);
+            Halo(orange.root, 60f, new Color(2.4f, 1.0f, 0.3f, 0.75f));
+            Halo(orange.root, 140f, new Color(1.3f, 0.45f, 0.12f, 0.35f));
+            Halo(blue.root, 34f, new Color(0.7f, 1.3f, 3f, 0.7f));
+            Halo(blue.root, 80f, new Color(0.3f, 0.5f, 1.4f, 0.3f));
+
+            MakeBody("Cinder", orange, default, 2.8f,
+                Mats.Planet(new Color(0.15f, 0.05f, 0.04f), new Color(1f, 0.4f, 0.1f), 3f, 0.4f, 3.5f, new Color(1f, 0.4f, 0.1f) * 2f, 1.6f, 80f),
+                40f, 5f, 6f, 30f, 0.05f, 8f);
+            var tide = MakeBody("Tide", orange, default, 3.8f,
+                Mats.Planet(new Color(0.05f, 0.2f, 0.45f), new Color(0.6f, 0.85f, 0.75f), 3f, 0.5f, 2.8f, new Color(0.4f, 0.8f, 1f) * 1.8f, 1.8f, 90f),
+                64f, 3f, -9f, 200f, 0.1f, 6f);
+            MakeBody("TideMoon", tide, default, 1f,
+                Mats.Planet(new Color(0.35f, 0.35f, 0.38f), new Color(0.8f, 0.8f, 0.82f), 1f, 0.05f, 6f, new Color(0.6f, 0.8f, 1f), 0.4f, 95f),
+                8f, 30f, 20f, 0f, 0f, 12f);
+
+            // warm light travelling from the orange sun toward the scene
+            sunLight.transform.rotation = Quaternion.LookRotation((-orange.root.position).normalized);
+        }
+
+        void BuildAsteroidField()
+        {
+            var mats = new[]
+            {
+                Mats.Planet(new Color(0.12f, 0.1f, 0.09f), new Color(0.5f, 0.42f, 0.35f), 1f, 0f, 3.5f, new Color(0.5f, 0.4f, 0.3f), 0.3f, 100f),
+                Mats.Planet(new Color(0.1f, 0.1f, 0.13f), new Color(0.45f, 0.47f, 0.55f), 1f, 0f, 4.5f, new Color(0.4f, 0.5f, 0.8f), 0.3f, 110f),
+                Mats.Planet(new Color(0.2f, 0.09f, 0.06f), new Color(0.7f, 0.4f, 0.25f), 1f, 0f, 3f, new Color(0.9f, 0.5f, 0.3f), 0.3f, 120f),
+            };
+            var rng = new System.Random(99);
+            float R(float lo, float hi) { return lo + (float)rng.NextDouble() * (hi - lo); }
+            for (int i = 0; i < 230; i++)
+            {
+                Vector3 p = Vector3.zero;
+                for (int tries = 0; tries < 8; tries++)
+                {
+                    p = new Vector3(R(-80f, 80f), R(-26f, 26f), R(14f, 150f));
+                    // keep a clear lane around the ship and the camera
+                    if (p.z > 45f || new Vector2(p.x - 3f, p.y).magnitude > 9f) break;
+                }
+                float size = rng.NextDouble() < 0.08 ? R(5f, 9f) : R(0.6f, 3.4f);
+                var rock = Mats.Prim(PrimitiveType.Sphere, systemRoot, "Rock" + i, p,
+                    new Vector3(size * R(0.6f, 1.4f), size * R(0.6f, 1.4f), size * R(0.6f, 1.4f)), mats[i % mats.Length]);
+                rock.transform.rotation = Random.rotation;
+                rocks.Add(new Rock { t = rock.transform, spin = new Vector3(R(-18f, 18f), R(-18f, 18f), R(-18f, 18f)) });
+            }
+            var giant = MakeBody("DistantGiant", null, new Vector3(-26f, 14f, 175f), 17f,
+                Mats.Planet(new Color(0.3f, 0.12f, 0.08f), new Color(0.95f, 0.7f, 0.45f), 8f, 0.85f, 2f, new Color(1f, 0.6f, 0.3f) * 1.6f, 1.5f, 130f),
+                0f, 0f, 0f, 0f, 0f, 2f);
+            AddRing(giant, 1.5f, 2.4f, 20f, new Color(0.9f, 0.75f, 0.6f, 0.7f));
         }
 
         // =================== per frame ===================
@@ -445,12 +658,26 @@ namespace DjVisuals
             prevRaw = warpRaw;
             float dur = warpTarget > 0f ? 2.4f : 3.0f;
             warpRaw = Mathf.MoveTowards(warpRaw, warpTarget, dt / dur);
-            warp = warpRaw * warpRaw * (3f - 2f * warpRaw);
+            float stateWarp = warpRaw * warpRaw * (3f - 2f * warpRaw);
+            warp = Mathf.Max(stateWarp, actions.Build * 0.6f);   // Build alone pre-stretches the stars without a jump
 
             // The "jump": a white flash as we cross the threshold in either direction.
             if (warpTarget > 0f && prevRaw < 0.5f && warpRaw >= 0.5f) flash = 1.6f;
-            if (warpTarget <= 0f && prevRaw > 0.4f && warpRaw <= 0.4f) flash = 1.0f;
+            if (warpTarget <= 0f && prevRaw > 0.4f && warpRaw <= 0.4f)
+            {
+                flash = 1.0f;
+                if (pendingArrive) { pendingArrive = false; ArriveNext(); }
+            }
             flash = Mathf.Max(0f, flash - dt * 1.6f);
+            reveal = Mathf.Max(0f, reveal - dt / 3.5f);
+            surge = Mathf.Max(0f, surge - dt * 1.4f);
+            if (dropRelease >= 0f)
+            {
+                dropRelease += dt;
+                actions.SetBuild(Mathf.Lerp(dropFrom, 0f, dropRelease / 2.5f));
+                if (dropRelease >= 2.5f) dropRelease = -1f;
+            }
+            skyMat.SetFloat("_Intensity", dests[destIndex].intensity * (1f + reveal * 1.8f));
 
             // streaking stars
             float speed = Mathf.Lerp(50f, 430f, warp);
@@ -498,6 +725,7 @@ namespace DjVisuals
                 }
                 lightPulse = Mathf.Max(lightPulse, p);
             }
+            lightPulse = Mathf.Max(lightPulse, surge);
             engineLight.intensity = 0.7f + warp * 6f + lightPulse * 4f + flash * 4f;
 
             // sustained blast: modest at idle, huge in warp; beat adds a kick
@@ -530,6 +758,13 @@ namespace DjVisuals
                 }
                 b.visual.Rotate(0f, b.spin * dt, 0f, Space.Self);
             }
+            foreach (var r in rocks)
+            {
+                r.t.position += new Vector3(0f, 0f, -RockDrift * dt);
+                if (r.t.position.z < -14f) r.t.position += new Vector3(0f, 0f, 165f);
+                r.t.Rotate(r.spin * dt, Space.Self);
+            }
+            foreach (var bb in billboards) bb.rotation = Quaternion.LookRotation(bb.position - cam.transform.position);
         }
 
         void UpdateCamera(float t)
@@ -537,15 +772,15 @@ namespace DjVisuals
             var shake = new Vector3(Mathf.PerlinNoise(t * 9f, 0.3f) - 0.5f, Mathf.PerlinNoise(0.7f, t * 9f) - 0.5f, 0f) * (0.12f * warp);
             cam.transform.position = CamBase + shake + new Vector3(0, 0, -warp * 0.8f);
             cam.transform.rotation = Quaternion.LookRotation(CamLook - cam.transform.position);
-            cam.fieldOfView = FovBase + warp * 14f + flash * 3f;
+            cam.fieldOfView = FovBase + warp * 14f + flash * 3f + reveal * reveal * 8f;
         }
 
         void UpdatePost()
         {
-            fx.Bloom.intensity.value = 1.1f + warp * 2.2f + flash * 4f;
-            fx.Adjust.postExposure.value = flash * 1.8f + warp * 0.25f;
+            fx.Bloom.intensity.value = 1.1f + warp * 2.2f + flash * 4f + reveal * 1.5f;
+            fx.Adjust.postExposure.value = flash * 1.8f + warp * 0.25f + reveal * 0.5f;
             fx.Lens.intensity.value = warp * 0.7f;
-            fx.Chroma.intensity.value = warp * 0.9f + flash * 0.4f;
+            fx.Chroma.intensity.value = warp * 0.9f + flash * 0.4f + reveal * 0.3f;
             fx.Vig.intensity.value = 0.2f + warp * 0.3f;
         }
 

@@ -8,6 +8,9 @@ Shader "DjVisuals/NebulaSky"
         _ColB ("Cloud B", Color) = (0.65, 0.12, 0.45, 1)
         _ColC ("Core glow", Color) = (0.15, 0.55, 0.75, 1)
         _Intensity ("Intensity", Float) = 1.3
+        _Cover ("Cloud coverage", Float) = 0
+        _Scale ("Cloud scale", Float) = 1.7
+        _Seed ("Seed", Float) = 0
     }
     SubShader
     {
@@ -28,6 +31,9 @@ Shader "DjVisuals/NebulaSky"
                 float4 _ColB;
                 float4 _ColC;
                 float _Intensity;
+                float _Cover;
+                float _Scale;
+                float _Seed;
             CBUFFER_END
             float _DjWarp;
 
@@ -51,8 +57,8 @@ Shader "DjVisuals/NebulaSky"
                 d.xz = float2(d.x * c - d.z * s, d.x * s + d.z * c);
                 float t = _Time.y * 0.012;
 
-                float baseN = dj_fbm(d * 1.7 + float3(3.0, 1.0, 7.0));
-                float cloud = smoothstep(0.42, 0.82, baseN);
+                float baseN = dj_fbm(d * _Scale + float3(3.0, 1.0, 7.0) + _Seed);
+                float cloud = smoothstep(0.42 - _Cover, 0.82 - _Cover * 0.6, baseN);
                 float detail = dj_fbm(d * 5.5 + float3(t, 0.0, -t));
                 float3 col = lerp(_ColA.rgb, _ColB.rgb, saturate(detail * 1.5)) * cloud * (0.3 + detail * 1.1);
 

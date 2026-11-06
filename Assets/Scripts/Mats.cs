@@ -21,6 +21,14 @@ namespace DjVisuals
             return m;
         }
 
+        /// <summary>Flat HDR color, for suns (bloom does the glow).</summary>
+        public static Material Unlit(Color hdr)
+        {
+            var m = new Material(Get("Universal Render Pipeline/Unlit"));
+            m.SetColor("_BaseColor", hdr);
+            return m;
+        }
+
         public static void Emission(Material m, Color hdr)
         {
             m.EnableKeyword("_EMISSION");

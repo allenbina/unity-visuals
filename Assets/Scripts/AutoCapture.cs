@@ -32,19 +32,21 @@ namespace DjVisuals
             steps = new[]
             {
                 new Step { t = 0.3f, kind = "sync" },
-                new Step { t = 0.4f, kind = "shot", arg = "01_beat" },
-                new Step { t = 0.8f, kind = "shot", arg = "02_idle" },
-                new Step { t = 1.0f, kind = "sats" },
-                new Step { t = 1.6f, kind = "shot", arg = "09_sats" },
+                new Step { t = 0.4f, kind = "shot", arg = "01_home_beat" },
                 new Step { t = 3.0f, kind = "warp" },
-                new Step { t = 3.9f, kind = "shot", arg = "03_charge" },
-                new Step { t = 5.0f, kind = "shot", arg = "04_jump" },
-                new Step { t = 8.0f, kind = "shot", arg = "05_warp" },
-                new Step { t = 10.0f, kind = "shot", arg = "06_warp_b" },
-                new Step { t = 10.2f, kind = "warp" },
-                new Step { t = 11.4f, kind = "shot", arg = "07_exit" },
-                new Step { t = 16.0f, kind = "shot", arg = "08_after" },
-                new Step { t = 16.5f, kind = "quit" },
+                new Step { t = 5.0f, kind = "shot", arg = "02_warp" },
+                new Step { t = 8.0f, kind = "warp" },                 // exit: arrives at Ember Nebula ~1.8s later
+                new Step { t = 10.3f, kind = "shot", arg = "03_ember_reveal" },
+                new Step { t = 14.0f, kind = "shot", arg = "04_ember" },
+                new Step { t = 14.5f, kind = "drop" },                // instant jump to Twin Suns
+                new Step { t = 15.2f, kind = "shot", arg = "05_twin_reveal" },
+                new Step { t = 19.0f, kind = "shot", arg = "06_twin" },
+                new Step { t = 19.5f, kind = "build" },               // tension: stars pre-stretch
+                new Step { t = 21.0f, kind = "shot", arg = "07_build" },
+                new Step { t = 21.5f, kind = "drop" },                // Shard Field
+                new Step { t = 22.2f, kind = "shot", arg = "08_shard_reveal" },
+                new Step { t = 27.0f, kind = "shot", arg = "09_shard" },
+                new Step { t = 27.5f, kind = "quit" },
             };
         }
 
@@ -64,6 +66,8 @@ namespace DjVisuals
                 {
                     case "sync": Actions.SetBpm(120); Actions.Sync(); break;
                     case "warp": Actions.ToggleWarp(); break;
+                    case "drop": Actions.FireDrop(); break;
+                    case "build": Actions.SetBuild(0.8f); break;
                     case "sats": FindFirstObjectByType<SpaceWorld>().DebugSpawnSatellites(); break;
                     case "shot": Shot(s.arg); break;
                     case "quit":

@@ -4,9 +4,10 @@ Not in priority order unless noted.
 
 ## Next: space world (in progress)
 - [x] Beat: engine rings ripple-flare (written, compiles, not yet seen running)
-- [ ] Accent: thruster burst or satellite pass
-- [ ] Build: star streaks + camera push-in
-- [ ] Drop: impact-frame flash, warp, nebula reveal
+- [x] Accent (shooting stars + engine surge), Build (pre-stretch), Drop (jump to next destination)
+- [x] Destinations: Home System, Ember Nebula, Twin Suns, Shard Field
+- [ ] Next destination idea: black hole with planets orbiting it and trails of matter falling in (accretion disc, lensing)
+- [ ] Tune destination order/length; let the performer pick a destination directly
 - [ ] Progression: planets / escort ships / galaxies that persist until Reset
 - [x] URP + bloom, procedural nebula sky, orbiting planets/moons/sub-moons, satellites, shooting stars
 - [x] Warp: toggle with W (blast, star streaks, fisheye, chromatic aberration)
