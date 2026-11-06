@@ -13,6 +13,7 @@ namespace DjVisuals
         public VisualActions Actions;
         public RenderTexture Wide;
         public int PanelCount = 3;
+        public bool ShowWarp = false;      // Warp button (space world)
         public bool ShowAdvanced = true;   // Accent/Build/Drop/Progress/Reset; off while a world only handles the beat
 
         string bpmText = "120";
@@ -56,6 +57,13 @@ namespace DjVisuals
             GUILayout.Space(10);
             if (GUILayout.Button("Sync (Space)", GUILayout.Width(100))) Actions.Sync();
             if (GUILayout.Button("Beat (B)", GUILayout.Width(80))) Actions.ManualBeat();
+            if (ShowWarp)
+            {
+                var old = GUI.backgroundColor;
+                if (Actions.Warping) GUI.backgroundColor = new Color(0.4f, 0.8f, 1f);
+                if (GUILayout.Button(Actions.Warping ? "WARP ON (W)" : "Warp (W)", GUILayout.Width(100))) Actions.ToggleWarp();
+                GUI.backgroundColor = old;
+            }
             if (ShowAdvanced)
             {
                 if (GUILayout.Button("Accent (A)", GUILayout.Width(90))) Actions.FireAccent();
@@ -112,11 +120,12 @@ namespace DjVisuals
             var e = Event.current;
             if (e.type != EventType.KeyDown) return;
             if (GUI.GetNameOfFocusedControl() == "bpm") return; // typing a tempo
-            if (!ShowAdvanced && e.keyCode != KeyCode.Space && e.keyCode != KeyCode.B) return;
+            if (!ShowAdvanced && e.keyCode != KeyCode.Space && e.keyCode != KeyCode.B && !(ShowWarp && e.keyCode == KeyCode.W)) return;
             switch (e.keyCode)
             {
                 case KeyCode.Space: Actions.Sync(); break;
                 case KeyCode.B: Actions.ManualBeat(); break;
+                case KeyCode.W: Actions.ToggleWarp(); break;
                 case KeyCode.A: Actions.FireAccent(); break;
                 case KeyCode.D: Actions.FireDrop(); break;
                 case KeyCode.P: Actions.Advance(); break;

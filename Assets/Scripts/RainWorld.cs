@@ -63,11 +63,7 @@ namespace DjVisuals
             ground.name = "Ground";
             ground.transform.SetParent(transform);
             ground.transform.localScale = new Vector3(8, 1, 8);
-            var gm = new Material(Shader.Find("Standard"));
-            gm.color = new Color(0.04f, 0.05f, 0.07f);
-            gm.SetFloat("_Glossiness", 0.9f);
-            gm.SetFloat("_Metallic", 0.2f);
-            ground.GetComponent<Renderer>().material = gm;
+            ground.GetComponent<Renderer>().material = Mats.Lit(new Color(0.04f, 0.05f, 0.07f), 0.9f, 0.2f);
             Destroy(ground.GetComponent<Collider>());
 
             // A few dark props so the uplight has something to rake across.
@@ -81,10 +77,7 @@ namespace DjVisuals
                 float h = 1.5f + (float)rng.NextDouble() * 4f;
                 p.transform.localScale = new Vector3(0.8f + (float)rng.NextDouble() * 1.2f, cyl ? h * 0.5f : h, 0.8f + (float)rng.NextDouble() * 1.2f);
                 p.transform.position = new Vector3(-16f + i * 4f + (float)rng.NextDouble() * 2f, h * 0.5f, 4f + (float)rng.NextDouble() * 9f);
-                var pm = new Material(Shader.Find("Standard"));
-                pm.color = new Color(0.06f, 0.07f, 0.09f);
-                pm.SetFloat("_Glossiness", 0.6f);
-                p.GetComponent<Renderer>().material = pm;
+                p.GetComponent<Renderer>().material = Mats.Lit(new Color(0.06f, 0.07f, 0.09f), 0.6f, 0f);
                 Destroy(p.GetComponent<Collider>());
             }
 

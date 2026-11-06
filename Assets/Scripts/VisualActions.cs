@@ -19,6 +19,9 @@ namespace DjVisuals
         public event Action Drop;
         public event Action<int> Progressed;    // new level
         public event Action ResetRequested;
+        public event Action<bool> WarpChanged;  // true = engaging
+
+        public bool Warping { get; private set; }
 
         // Not Awake: Bootstrap assigns Clock after AddComponent, so Awake would see null.
         void Start() { Clock.OnBeat += i => Beat?.Invoke(i); }
@@ -31,6 +34,12 @@ namespace DjVisuals
         public void NudgeBuild(float d) => SetBuild(Build + d);
         public void FireDrop() { Drop?.Invoke(); }
         public void Advance() { Progression++; Progressed?.Invoke(Progression); }
-        public void DoReset() { Build = 0; Progression = 0; ResetRequested?.Invoke(); }
+        public void ToggleWarp() { Warping = !Warping; WarpChanged?.Invoke(Warping); }
+        public void DoReset()
+        {
+            Build = 0; Progression = 0;
+            if (Warping) { Warping = false; WarpChanged?.Invoke(false); }
+            ResetRequested?.Invoke();
+        }
     }
 }

@@ -8,7 +8,11 @@ Not in priority order unless noted.
 - [ ] Build: star streaks + camera push-in
 - [ ] Drop: impact-frame flash, warp, nebula reveal
 - [ ] Progression: planets / escort ships / galaxies that persist until Reset
-- [ ] Swap primitive ship for Kenney Space Kit (CC0)
+- [x] URP + bloom, procedural nebula sky, orbiting planets/moons/sub-moons, satellites, shooting stars
+- [x] Warp: toggle with W (blast, star streaks, fisheye, chromatic aberration)
+- [ ] Swap primitive ship and satellites for real models (Kenney Space Kit CC0, NASA 3D, or TRELLIS-generated)
+- [ ] Real nebula/planet textures (NASA/ESA public-domain imagery) instead of procedural
+- [ ] Tie warp ramp to Build/Drop controls; beat-lock the star streak pulses
 
 ## Later: jellyfish world (not a priority)
 

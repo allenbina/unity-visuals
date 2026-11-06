@@ -1,0 +1,84 @@
+using UnityEngine;
+
+namespace DjVisuals
+{
+    /// <summary>Material factory for the URP pipeline. All HDR colors (components above 1) feed bloom.</summary>
+    public static class Mats
+    {
+        static Shader Get(string name)
+        {
+            var s = Shader.Find(name);
+            if (s == null) Debug.LogError("[DjVisuals] Shader not found: " + name);
+            return s;
+        }
+
+        public static Material Lit(Color c, float smooth = 0.5f, float metal = 0f)
+        {
+            var m = new Material(Get("Universal Render Pipeline/Lit"));
+            m.SetColor("_BaseColor", c);
+            m.SetFloat("_Smoothness", smooth);
+            m.SetFloat("_Metallic", metal);
+            return m;
+        }
+
+        public static void Emission(Material m, Color hdr)
+        {
+            m.EnableKeyword("_EMISSION");
+            m.SetColor("_EmissionColor", hdr);
+        }
+
+        public static Material Additive(Color hdr, float soft = 1.5f)
+        {
+            var m = new Material(Get("DjVisuals/Additive"));
+            m.SetColor("_Color", hdr);
+            m.SetFloat("_Soft", soft);
+            return m;
+        }
+
+        public static Material Trail(Color hdr, float soft = 1.2f)
+        {
+            var m = new Material(Get("DjVisuals/AdditiveTrail"));
+            m.SetColor("_Color", hdr);
+            m.SetFloat("_Soft", soft);
+            return m;
+        }
+
+        public static Material Planet(Color a, Color b, float bands, float bandAmt, float noise, Color atmo, float atmoInt, float seed)
+        {
+            var m = new Material(Get("DjVisuals/Planet"));
+            m.SetColor("_ColA", a);
+            m.SetColor("_ColB", b);
+            m.SetFloat("_Bands", bands);
+            m.SetFloat("_BandAmt", bandAmt);
+            m.SetFloat("_Noise", noise);
+            m.SetColor("_Atmo", atmo);
+            m.SetFloat("_AtmoInt", atmoInt);
+            m.SetFloat("_Seed", seed);
+            return m;
+        }
+
+        public static Material Ring(Color c)
+        {
+            var m = new Material(Get("DjVisuals/Ring"));
+            m.SetColor("_Color", c);
+            return m;
+        }
+
+        public static Material NebulaSky()
+        {
+            return new Material(Get("DjVisuals/NebulaSky"));
+        }
+
+        public static GameObject Prim(PrimitiveType type, Transform parent, string name, Vector3 localPos, Vector3 localScale, Material mat)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = localScale;
+            go.GetComponent<Renderer>().sharedMaterial = mat;
+            Object.Destroy(go.GetComponent<Collider>());
+            return go;
+        }
+    }
+}
