@@ -25,3 +25,5 @@ sysinfo.txt
 crashlytics-build.session.json
 # Local asset downloads (re-fetch per README)
 /Assets/ThirdParty/
+/Assets/_Staging/
+/Assets/_Staging.meta

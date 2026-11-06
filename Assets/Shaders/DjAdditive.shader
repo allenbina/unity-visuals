@@ -5,6 +5,7 @@ Shader "DjVisuals/Additive"
     {
         [HDR] _Color ("Color", Color) = (1,1,1,1)
         _Soft ("Softness", Range(0.2, 6)) = 1.5
+        _VC ("Use vertex color", Float) = 1
     }
     SubShader
     {
@@ -23,6 +24,7 @@ Shader "DjVisuals/Additive"
             CBUFFER_START(UnityPerMaterial)
                 float4 _Color;
                 float _Soft;
+                float _VC;
             CBUFFER_END
 
             struct Attributes { float4 pos : POSITION; float4 col : COLOR; float2 uv : TEXCOORD0; };
@@ -42,7 +44,7 @@ Shader "DjVisuals/Additive"
                 float2 d = i.uv * 2.0 - 1.0;
                 float r = saturate(1.0 - dot(d, d));
                 float a = pow(r, _Soft);
-                float4 c = i.col * _Color;
+                float4 c = lerp(float4(1, 1, 1, 1), i.col, _VC) * _Color;
                 return half4(c.rgb, c.a * a);
             }
             ENDHLSL

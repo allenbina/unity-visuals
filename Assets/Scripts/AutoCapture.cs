@@ -34,6 +34,8 @@ namespace DjVisuals
                 new Step { t = 0.3f, kind = "sync" },
                 new Step { t = 0.4f, kind = "shot", arg = "01_beat" },
                 new Step { t = 0.8f, kind = "shot", arg = "02_idle" },
+                new Step { t = 1.0f, kind = "sats" },
+                new Step { t = 1.6f, kind = "shot", arg = "09_sats" },
                 new Step { t = 3.0f, kind = "warp" },
                 new Step { t = 3.9f, kind = "shot", arg = "03_charge" },
                 new Step { t = 5.0f, kind = "shot", arg = "04_jump" },
@@ -62,6 +64,7 @@ namespace DjVisuals
                 {
                     case "sync": Actions.SetBpm(120); Actions.Sync(); break;
                     case "warp": Actions.ToggleWarp(); break;
+                    case "sats": FindFirstObjectByType<SpaceWorld>().DebugSpawnSatellites(); break;
                     case "shot": Shot(s.arg); break;
                     case "quit":
 #if UNITY_EDITOR

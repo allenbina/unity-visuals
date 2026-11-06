@@ -69,6 +69,14 @@ namespace DjVisuals
             return new Material(Get("DjVisuals/NebulaSky"));
         }
 
+        /// <summary>Gives every renderer under the object one lit material using a palette texture.</summary>
+        public static void ApplyTexture(GameObject go, Texture2D tex, float smooth = 0.4f, float metal = 0.25f)
+        {
+            var mat = Lit(Color.white, smooth, metal);
+            mat.SetTexture("_BaseMap", tex);
+            foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = mat;
+        }
+
         public static GameObject Prim(PrimitiveType type, Transform parent, string name, Vector3 localPos, Vector3 localScale, Material mat)
         {
             var go = GameObject.CreatePrimitive(type);

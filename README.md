@@ -8,7 +8,7 @@ Always moving, no controls needed: a gas giant with a ring, a moon with two sub-
 
 **Warp (W):** charge, white flash, star streaks, fisheye bend, chromatic aberration, big sustained blast; press again to drop out.
 
-Everything is generated in code (primitives, particles, procedural shaders in `Assets/Shaders`). No third-party assets.
+Models: the hero ship is Quaternius's **Executioner** (CC0) and the crossing satellites are **NASA** models (Aqua, CALIPSO, CubeSat, GOES, ISS, JWST, Juno). Sources and licences are in `Assets/Resources/Models/LICENSES.md`. Planets, nebula, stars, rings and all effects are generated in code (procedural shaders in `Assets/Shaders`). If the models are missing the code falls back to the old primitive ship and satellites.
 
 ## Status
 
@@ -55,4 +55,4 @@ The beat indicator (four cells, downbeat brighter, plus a phase bar) shows drift
 
 ## Asset dependencies
 
-None. Shaders are found by name; for a standalone build add them to Always Included Shaders. Future worlds (see handoff) may use Kenney, Quaternius, or Synty Simple FX; download into `Assets/ThirdParty/` (git-ignored) and list them here.
+Packages: URP, glTFast + Draco for Unity (the NASA models are Draco-compressed GLB). Models are committed under `Assets/Resources/Models`. Shaders are found by name; for a standalone build add them to Always Included Shaders. Future worlds (see handoff) may use Kenney, Quaternius, or Synty Simple FX; download into `Assets/ThirdParty/` (git-ignored) and list them here.

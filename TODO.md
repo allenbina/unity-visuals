@@ -10,7 +10,8 @@ Not in priority order unless noted.
 - [ ] Progression: planets / escort ships / galaxies that persist until Reset
 - [x] URP + bloom, procedural nebula sky, orbiting planets/moons/sub-moons, satellites, shooting stars
 - [x] Warp: toggle with W (blast, star streaks, fisheye, chromatic aberration)
-- [ ] Swap primitive ship and satellites for real models (Kenney Space Kit CC0, NASA 3D, or TRELLIS-generated)
+- [x] Real models: Quaternius Executioner ship, NASA satellites
+- [ ] Alternate hero ships to try (Spitfire / Omen are in the Quaternius pack); TRELLIS-generated hero ship
 - [ ] Real nebula/planet textures (NASA/ESA public-domain imagery) instead of procedural
 - [ ] Tie warp ramp to Build/Drop controls; beat-lock the star streak pulses
 

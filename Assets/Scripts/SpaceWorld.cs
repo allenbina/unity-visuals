@@ -12,7 +12,8 @@ namespace DjVisuals
     /// </summary>
     public class SpaceWorld : MonoBehaviour
     {
-        const int RingCount = 3;
+        int ringCount = 3;
+        bool glowRings;                    // additive glow quads (model ship) vs emissive discs (primitive ship)
         const float RippleDelay = 0.07f;
         const float OrbitSpeedScale = 1.6f;
         static readonly Color EngineColor = new Color(0.25f, 0.65f, 1f);
@@ -31,7 +32,10 @@ namespace DjVisuals
         Vector3[] ringBaseScale;
         float[] ringPulse;
         float[] ringDelay;
-        ParticleSystem blast;
+        readonly List<ParticleSystem> blasts = new List<ParticleSystem>();
+        readonly List<float> blastShare = new List<float>();
+        readonly List<float> blastRadius = new List<float>();
+        GameObject[] satPrefabs;
         Material blastMat;
 
         // sky / stars
@@ -80,7 +84,7 @@ namespace DjVisuals
             RenderSettings.skybox = Mats.NebulaSky();
             cam.clearFlags = CameraClearFlags.Skybox;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.035f, 0.04f, 0.07f);
+            RenderSettings.ambientLight = new Color(0.075f, 0.085f, 0.13f);
 
             cam.transform.position = CamBase;
             cam.transform.rotation = Quaternion.LookRotation(CamLook - CamBase);
@@ -91,6 +95,15 @@ namespace DjVisuals
             sun.color = new Color(1f, 0.93f, 0.85f);
             sun.intensity = 1.0f;
             sun.transform.rotation = Quaternion.Euler(18f, 55f, 0f);
+
+            // soft cool fill from the camera side so the ship's rear and the satellites' faces are not black
+            var fill = new GameObject("Fill").AddComponent<Light>();
+            fill.transform.SetParent(transform);
+            fill.type = LightType.Directional;
+            fill.color = new Color(0.65f, 0.78f, 1f);
+            fill.intensity = 0.55f;
+            fill.shadows = LightShadows.None;
+            fill.transform.rotation = Quaternion.Euler(22f, -14f, 0f);
 
             BuildStars();
             BuildWarpStars();
@@ -256,7 +269,61 @@ namespace DjVisuals
         {
             ship = new GameObject("Ship").transform;
             ship.SetParent(transform);
+            blastMat = Mats.Additive(IdleBlast, 1.3f);
 
+            var prefab = Resources.Load<GameObject>("Models/Ships/Executioner");
+            var tex = Resources.Load<Texture2D>("Models/Ships/Executioner_Blue");
+            if (prefab == null) { BuildPrimitiveShip(); return; }
+
+            // Quaternius "Executioner": 10 units wide, faces +Z, nozzles at the rear (found by mesh analysis).
+            const float scale = 0.5f;
+            var model = Instantiate(prefab, ship);
+            model.name = "Executioner";
+            model.transform.localScale = prefab.transform.localScale * scale;   // keep the FBX unit-conversion scale
+            model.transform.localPosition = new Vector3(0f, -0.15f * scale, -1.52f * scale);   // center the hull on the ship pivot
+            if (tex != null) Mats.ApplyTexture(model, tex);
+            {
+                var rs = model.GetComponentsInChildren<Renderer>();
+                var bb = rs.Length > 0 ? rs[0].bounds : new Bounds();
+                foreach (var r0 in rs) bb.Encapsulate(r0.bounds);
+                Debug.Log("[DjVisuals] ship model renderers=" + rs.Length + " tex=" + (tex != null) + " boundsCenter=" + bb.center + " size=" + bb.size + " shader=" + (rs.Length > 0 ? rs[0].sharedMaterial.shader.name : "-") + " enabled=" + (rs.Length > 0 && rs[0].enabled));
+            }
+
+            float[] nx = { 1.0f, -1.0f, 4.5f, -4.5f };   // center-out so the beat ripples outward
+            ringCount = nx.Length;
+            glowRings = true;
+            rings = new Transform[ringCount];
+            ringMats = new Material[ringCount];
+            ringBaseScale = new Vector3[ringCount];
+            ringPulse = new float[ringCount];
+            ringDelay = new float[ringCount];
+            for (int i = 0; i < ringCount; i++)
+            {
+                bool outer = Mathf.Abs(nx[i]) > 2f;
+                var pos = new Vector3(nx[i] * scale, -0.075f, -2.95f * scale - 0.76f);
+                float d = outer ? 1.9f : 1.5f;
+                var mat = Mats.Additive(EngineColor * 1.2f, 1.6f);
+                mat.SetFloat("_VC", 0f);   // quads have no vertex colors
+                var q = Mats.Prim(PrimitiveType.Quad, ship, "NozzleGlow" + i, pos + new Vector3(0, 0, -0.03f), new Vector3(d, d, 1f), mat);
+                rings[i] = q.transform;
+                ringMats[i] = mat;
+                ringBaseScale[i] = q.transform.localScale;
+                ringDelay[i] = -1f;
+                MakeBlast(pos, outer ? 0.34f : 0.28f, 1f / ringCount);
+            }
+
+            var lg = new GameObject("EngineLight");
+            lg.transform.SetParent(ship, false);
+            lg.transform.localPosition = new Vector3(0, 0, -3.6f);
+            engineLight = lg.AddComponent<Light>();
+            engineLight.type = LightType.Point;
+            engineLight.color = EngineColor;
+            engineLight.range = 18f;
+            engineLight.intensity = 0.7f;
+        }
+
+        void BuildPrimitiveShip()
+        {
             var hull = Mats.Lit(new Color(0.58f, 0.6f, 0.68f), 0.65f, 0.7f);
             var dark = Mats.Lit(new Color(0.12f, 0.13f, 0.17f), 0.5f, 0.6f);
 
@@ -269,12 +336,14 @@ namespace DjVisuals
             Mats.Prim(PrimitiveType.Cube, ship, "Fin", new Vector3(0, 0.55f, -0.7f), new Vector3(0.08f, 0.7f, 1.0f), hull);
             Mats.Prim(PrimitiveType.Cube, ship, "Spine", new Vector3(0, 0.38f, 0.1f), new Vector3(0.25f, 0.18f, 1.7f), dark);
 
-            rings = new Transform[RingCount];
-            ringMats = new Material[RingCount];
-            ringBaseScale = new Vector3[RingCount];
-            ringPulse = new float[RingCount];
-            ringDelay = new float[RingCount];
-            for (int i = 0; i < RingCount; i++)
+            ringCount = 3;
+            glowRings = false;
+            rings = new Transform[ringCount];
+            ringMats = new Material[ringCount];
+            ringBaseScale = new Vector3[ringCount];
+            ringPulse = new float[ringCount];
+            ringDelay = new float[ringCount];
+            for (int i = 0; i < ringCount; i++)
             {
                 var mat = Mats.Lit(new Color(0.05f, 0.1f, 0.18f), 0.4f, 0f);
                 Mats.Emission(mat, EngineColor * 0.5f);
@@ -297,17 +366,16 @@ namespace DjVisuals
             engineLight.range = 16f;
             engineLight.intensity = 0.7f;
 
-            BuildBlast();
+            MakeBlast(new Vector3(0, 0, -1.5f), 0.38f, 1f);
         }
 
-        void BuildBlast()
+        void MakeBlast(Vector3 localPos, float radius, float share)
         {
-            blastMat = Mats.Additive(IdleBlast, 1.3f);
             var go = new GameObject("Blast");
             go.transform.SetParent(ship, false);
-            go.transform.localPosition = new Vector3(0, 0, -1.5f);
+            go.transform.localPosition = localPos;
             go.transform.localRotation = Quaternion.LookRotation(Vector3.back);   // cone emits along local +Z -> world -Z
-            blast = go.AddComponent<ParticleSystem>();
+            var blast = go.AddComponent<ParticleSystem>();
             blast.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             var m = blast.main;
             m.playOnAwake = false;
@@ -321,7 +389,7 @@ namespace DjVisuals
             var sh = blast.shape;
             sh.shapeType = ParticleSystemShapeType.Cone;
             sh.angle = 4f;
-            sh.radius = 0.38f;
+            sh.radius = radius;
             var sol = blast.sizeOverLifetime;
             sol.enabled = true;
             sol.size = new ParticleSystem.MinMaxCurve(1f, new AnimationCurve(new Keyframe(0, 0.7f), new Keyframe(0.25f, 1f), new Keyframe(1, 0.15f)));
@@ -338,13 +406,16 @@ namespace DjVisuals
             r.lengthScale = 1.6f;
             r.cameraVelocityScale = 0f;
             blast.Play();
+            blasts.Add(blast);
+            blastShare.Add(share);
+            blastRadius.Add(radius);
         }
 
         // =================== actions ===================
 
         void Flare()
         {
-            for (int i = 0; i < RingCount; i++) ringDelay[i] = i * RippleDelay;
+            for (int i = 0; i < ringCount; i++) ringDelay[i] = (glowRings ? i / 2 : i) * RippleDelay * (glowRings ? 1.6f : 1f);
         }
 
         void OnWarpChanged(bool on)
@@ -402,7 +473,7 @@ namespace DjVisuals
             ship.localRotation = Quaternion.Euler(Mathf.Sin(t * 0.5f) * 0.8f, 0, Mathf.Sin(t * 0.7f) * 1.5f);
 
             float lightPulse = 0f;
-            for (int i = 0; i < RingCount; i++)
+            for (int i = 0; i < ringCount; i++)
             {
                 if (ringDelay[i] >= 0f)
                 {
@@ -411,22 +482,37 @@ namespace DjVisuals
                 }
                 ringPulse[i] = Mathf.Max(0f, ringPulse[i] - dt * 4.5f);
                 float p = ringPulse[i] * ringPulse[i];
-                float grow = 1f + p * 0.55f;
-                rings[i].localScale = new Vector3(ringBaseScale[i].x * grow, ringBaseScale[i].y * (1f + p * 2f), ringBaseScale[i].z * grow);
-                Mats.Emission(ringMats[i], EngineColor * (0.5f + warp * 2f + p * 4f));
+                if (glowRings)
+                {
+                    float g = 1f + p * 0.7f + warp * 0.35f;
+                    rings[i].localScale = new Vector3(ringBaseScale[i].x * g, ringBaseScale[i].y * g, 1f);
+                    var gc = EngineColor * (1.2f + warp * 2.5f + p * 6f);
+                    gc.a = Mathf.Clamp01(0.55f + p * 0.45f + warp * 0.3f);
+                    ringMats[i].SetColor("_Color", gc);
+                }
+                else
+                {
+                    float grow = 1f + p * 0.55f;
+                    rings[i].localScale = new Vector3(ringBaseScale[i].x * grow, ringBaseScale[i].y * (1f + p * 2f), ringBaseScale[i].z * grow);
+                    Mats.Emission(ringMats[i], EngineColor * (0.5f + warp * 2f + p * 4f));
+                }
                 lightPulse = Mathf.Max(lightPulse, p);
             }
             engineLight.intensity = 0.7f + warp * 6f + lightPulse * 4f + flash * 4f;
 
             // sustained blast: modest at idle, huge in warp; beat adds a kick
-            var em = blast.emission;
-            em.rateOverTime = Mathf.Lerp(500f, 1000f, warp) * (1f + lightPulse * 0.4f);
-            var m = blast.main;
-            m.startSpeed = Mathf.Lerp(12f, 26f, warp) * (1f + lightPulse * 0.25f);
-            m.startLifetime = Mathf.Lerp(0.5f, 0.6f, warp);
-            m.startSize = new ParticleSystem.MinMaxCurve(Mathf.Lerp(0.2f, 0.4f, warp), Mathf.Lerp(0.4f, 0.8f, warp));
-            var sh = blast.shape;
-            sh.radius = Mathf.Lerp(0.35f, 0.45f, warp);
+            for (int bi = 0; bi < blasts.Count; bi++)
+            {
+                var b = blasts[bi];
+                var em = b.emission;
+                em.rateOverTime = Mathf.Lerp(500f, 1000f, warp) * blastShare[bi] * (1f + lightPulse * 0.4f);
+                var m = b.main;
+                m.startSpeed = Mathf.Lerp(12f, 26f, warp) * (1f + lightPulse * 0.25f);
+                m.startLifetime = Mathf.Lerp(0.5f, 0.6f, warp);
+                m.startSize = new ParticleSystem.MinMaxCurve(Mathf.Lerp(0.2f, 0.4f, warp), Mathf.Lerp(0.4f, 0.8f, warp));
+                var sh = b.shape;
+                sh.radius = blastRadius[bi] * Mathf.Lerp(0.95f, 1.25f, warp);
+            }
             blastMat.SetColor("_Color", Color.Lerp(IdleBlast, WarpBlast, warp) * (1f + lightPulse * 0.5f));
         }
 
@@ -479,7 +565,7 @@ namespace DjVisuals
                 s.t.Rotate(s.spin * dt, Space.Self);
                 s.blink += dt;
                 float on = Mathf.Repeat(s.blink, 1.3f) < 0.12f ? 1f : 0.05f;
-                Mats.Emission(s.lamp, new Color(6f, 0.6f, 0.4f) * on);
+                if (s.lamp != null) Mats.Emission(s.lamp, new Color(6f, 0.6f, 0.4f) * on);
                 if (Mathf.Abs(s.t.position.x) > 95f) { Destroy(s.t.gameObject); sats.RemoveAt(i); }
             }
             for (int i = shooters.Count - 1; i >= 0; i--)
@@ -496,13 +582,25 @@ namespace DjVisuals
             }
         }
 
-        void SpawnSatellite()
+        /// <summary>Test hook: drop a row of satellites into frame so the headless capture can inspect them.</summary>
+        public void DebugSpawnSatellites()
+        {
+            for (int i = 0; i < 5; i++) SpawnSatellite(-26f + i * 13f);
+        }
+
+        void SpawnSatellite(float? startX = null)
         {
             float dir = Random.value < 0.5f ? -1f : 1f;
             var root = new GameObject("Satellite").transform;
             root.SetParent(transform);
             float z = Random.Range(12f, 40f);
-            root.position = new Vector3(-dir * 70f, Random.Range(-4f, 9f), z);
+            root.position = new Vector3(startX ?? -dir * 70f, Random.Range(-4f, 9f), z);
+            if (satPrefabs == null) satPrefabs = Resources.LoadAll<GameObject>("Models/Sats");
+            if (satPrefabs.Length > 0)
+            {
+                SpawnModelSatellite(root, dir);
+                return;
+            }
             float s = Random.Range(1.2f, 2.2f);
             root.localScale = Vector3.one * s;
             root.rotation = Random.rotation;
@@ -527,6 +625,37 @@ namespace DjVisuals
                 spin = new Vector3(Random.Range(-14f, 14f), Random.Range(-14f, 14f), Random.Range(-14f, 14f)),
                 lamp = lamp,
                 blink = Random.Range(0f, 1.3f),
+            });
+        }
+
+        void SpawnModelSatellite(Transform root, float dir)
+        {
+            var prefab = satPrefabs[Random.Range(0, satPrefabs.Length)];
+            var model = Instantiate(prefab, root);
+            model.transform.localPosition = Vector3.zero;
+            model.transform.localRotation = Quaternion.identity;
+
+            // The NASA models come in wildly different units (0.1 to 500): normalize to a target size, then center on the pivot.
+            Bounds WorldBounds()
+            {
+                var rs = model.GetComponentsInChildren<Renderer>();
+                var b = rs[0].bounds;
+                foreach (var r in rs) b.Encapsulate(r.bounds);
+                return b;
+            }
+            var size = WorldBounds().size;
+            float maxDim = Mathf.Max(0.0001f, Mathf.Max(size.x, Mathf.Max(size.y, size.z)));
+            float target = Random.Range(2.4f, 4.4f) * (prefab.name.Contains("Space_Station") ? 1.8f : 1f);
+            model.transform.localScale *= target / maxDim;   // multiply: the import carries its own unit scale
+            model.transform.position += root.position - WorldBounds().center;
+            root.rotation = Random.rotation;
+
+            sats.Add(new Mover
+            {
+                t = root,
+                vel = new Vector3(dir * Random.Range(4.5f, 8f), Random.Range(-0.2f, 0.4f), 0f),
+                spin = new Vector3(Random.Range(-10f, 10f), Random.Range(-10f, 10f), Random.Range(-10f, 10f)),
+                lamp = null,
             });
         }
 
