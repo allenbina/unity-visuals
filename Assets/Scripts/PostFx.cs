@@ -13,6 +13,19 @@ namespace DjVisuals
         public Vignette Vig;
         public ColorAdjustments Adjust;
 
+        /// <summary>Back to neutral so a new world does not inherit the last world's effects.</summary>
+        public void ResetDefaults()
+        {
+            Bloom.threshold.value = 0.9f;
+            Bloom.intensity.value = 1.1f;
+            Bloom.scatter.value = 0.7f;
+            Lens.intensity.value = 0f;
+            Chroma.intensity.value = 0f;
+            Vig.intensity.value = 0.2f;
+            Adjust.postExposure.value = 0f;
+            Adjust.saturation.value = 10f;
+        }
+
         public static PostFx Create(Transform parent)
         {
             var go = new GameObject("PostFx");

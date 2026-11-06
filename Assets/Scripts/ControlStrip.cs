@@ -90,6 +90,14 @@ namespace DjVisuals
                 : "Not synced: press Sync on a downbeat");
             GUILayout.FlexibleSpace();
             if (!string.IsNullOrEmpty(Actions.Status)) GUILayout.Label(Actions.Status);
+            GUILayout.Space(14);
+            for (int w = 0; w < VisualActions.WorldNames.Length; w++)
+            {
+                var oldBg = GUI.backgroundColor;
+                if (w == Actions.CurrentWorld) GUI.backgroundColor = new Color(0.4f, 0.8f, 1f);
+                if (GUILayout.Button((w + 1) + " " + VisualActions.WorldNames[w], GUILayout.Width(110))) Actions.SelectWorld(w);
+                GUI.backgroundColor = oldBg;
+            }
             GUILayout.EndHorizontal();
 
             GUILayout.EndArea();
@@ -124,7 +132,7 @@ namespace DjVisuals
             if (e.type != EventType.KeyDown) return;
             if (GUI.GetNameOfFocusedControl() == "bpm") return; // typing a tempo
             bool core = ShowCore || ShowAdvanced;
-            bool allowed = e.keyCode == KeyCode.Space || e.keyCode == KeyCode.B
+            bool allowed = e.keyCode == KeyCode.Space || e.keyCode == KeyCode.B || e.keyCode == KeyCode.Alpha1 || e.keyCode == KeyCode.Alpha2
                 || (ShowWarp && e.keyCode == KeyCode.W)
                 || (core && (e.keyCode == KeyCode.A || e.keyCode == KeyCode.D || e.keyCode == KeyCode.R || e.keyCode == KeyCode.UpArrow || e.keyCode == KeyCode.DownArrow))
                 || (ShowAdvanced && e.keyCode == KeyCode.P);
@@ -134,6 +142,8 @@ namespace DjVisuals
                 case KeyCode.Space: Actions.Sync(); break;
                 case KeyCode.B: Actions.ManualBeat(); break;
                 case KeyCode.W: Actions.ToggleWarp(); break;
+                case KeyCode.Alpha1: Actions.SelectWorld(0); break;
+                case KeyCode.Alpha2: Actions.SelectWorld(1); break;
                 case KeyCode.A: Actions.FireAccent(); break;
                 case KeyCode.D: Actions.FireDrop(); break;
                 case KeyCode.P: Actions.Advance(); break;

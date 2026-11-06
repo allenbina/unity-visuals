@@ -84,6 +84,34 @@ namespace DjVisuals
             return m;
         }
 
+        public static Material WaterSky() { return new Material(Get("DjVisuals/WaterSky")); }
+
+        public static Material Seabed(Color sand, Color tint, Color glow, float coralMode)
+        {
+            var m = new Material(Get("DjVisuals/Seabed"));
+            m.SetColor("_Sand", sand);
+            m.SetColor("_Tint", tint);
+            m.SetColor("_Glow", glow);
+            m.SetFloat("_CoralMode", coralMode);
+            return m;
+        }
+
+        public static Material Jelly(Color hdr)
+        {
+            var m = new Material(Get("DjVisuals/Jelly"));
+            m.SetColor("_Color", hdr);
+            return m;
+        }
+
+        public static Material Fish(Color back, Color belly, Color fin)
+        {
+            var m = new Material(Get("DjVisuals/Fish"));
+            m.SetColor("_Color", back);
+            m.SetColor("_Belly", belly);
+            m.SetColor("_Fin", fin);
+            return m;
+        }
+
         public static Material NebulaSky()
         {
             return new Material(Get("DjVisuals/NebulaSky"));

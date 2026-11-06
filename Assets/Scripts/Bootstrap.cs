@@ -4,15 +4,19 @@ using UnityEngine.Rendering.Universal;
 namespace DjVisuals
 {
     /// <summary>
-    /// Builds the whole experiment at Play time, so any empty scene works:
-    /// clock -> actions -> world -> one wide camera -> RenderTexture -> three panels + controls.
+    /// Builds the shared part of the experiment at Play time (clock, actions, wide camera, post-processing, panels and
+    /// controls) and then loads a world into it. Worlds are swapped with the 1 / 2 keys or the buttons in the strip.
+    /// Any empty scene works.
     /// </summary>
     public static class Bootstrap
     {
         const int PanelCount = 3;
 
-        // Which world to run. Space has beat + warp; rain has every control except warp.
-        static readonly bool UseSpace = true;
+        static GameObject root, worldGo;
+        static VisualActions actions;
+        static Camera cam;
+        static PostFx fx;
+        static ControlStrip strip;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Start()
@@ -21,10 +25,10 @@ namespace DjVisuals
             foreach (var c in Object.FindObjectsByType<Camera>(FindObjectsSortMode.None)) c.enabled = false;
             foreach (var l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None)) l.enabled = false;
 
-            var root = new GameObject("DjVisuals");
+            root = new GameObject("DjVisuals");
 
             var clock = root.AddComponent<BeatClock>();
-            var actions = root.AddComponent<VisualActions>();
+            actions = root.AddComponent<VisualActions>();
             actions.Clock = clock;
 
             // One wide view, cropped into PanelCount windows by the control strip.
@@ -34,11 +38,10 @@ namespace DjVisuals
 
             var camGo = new GameObject("WideCamera");
             camGo.transform.SetParent(root.transform);
-            var cam = camGo.AddComponent<Camera>();
+            cam = camGo.AddComponent<Camera>();
             cam.targetTexture = rt;
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.005f, 0.007f, 0.012f);
-            cam.fieldOfView = 30f;   // vertical; horizontal is very wide because the target is 48:9
             cam.nearClipPlane = 0.3f;
             cam.farClipPlane = 600f;
             cam.allowHDR = true;
@@ -46,22 +49,7 @@ namespace DjVisuals
             camData.renderPostProcessing = true;
             camData.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
 
-            var fx = PostFx.Create(root.transform);
-
-            if (UseSpace)
-            {
-                var space = new GameObject("SpaceWorld").AddComponent<SpaceWorld>();
-                space.transform.SetParent(root.transform);
-                space.Init(actions, cam, fx);
-            }
-            else
-            {
-                camGo.transform.position = new Vector3(0, 3.2f, -16f);
-                camGo.transform.rotation = Quaternion.Euler(4f, 0, 0);
-                var rain = new GameObject("RainWorld").AddComponent<RainWorld>();
-                rain.transform.SetParent(root.transform);
-                rain.Init(actions);
-            }
+            fx = PostFx.Create(root.transform);
 
             // Game view needs a camera that renders to screen or it shows a warning; this one just clears to black.
             var screenCam = new GameObject("ScreenClearCamera").AddComponent<Camera>();
@@ -71,13 +59,13 @@ namespace DjVisuals
             screenCam.cullingMask = 0;
             screenCam.depth = -100;
 
-            var strip = root.AddComponent<ControlStrip>();
+            strip = root.AddComponent<ControlStrip>();
             strip.Actions = actions;
             strip.Wide = rt;
             strip.PanelCount = PanelCount;
-            strip.ShowAdvanced = !UseSpace;   // Progress is rain-only for now
-            strip.ShowCore = UseSpace;        // Accent / Drop / Reset / Build are wired in space
-            strip.ShowWarp = UseSpace;
+
+            actions.WorldRequested += LoadWorld;
+            LoadWorld(StartWorld());
 
             var capDir = AutoCapture.ArgDir();
             if (capDir != null)
@@ -86,6 +74,48 @@ namespace DjVisuals
                 cap.Actions = actions;
                 cap.Wide = rt;
                 cap.OutDir = capDir;
+            }
+        }
+
+        // -djworld N on the command line starts in world N (used by the headless capture)
+        static int StartWorld()
+        {
+            var a = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i < a.Length - 1; i++)
+                if (a[i] == "-djworld" && int.TryParse(a[i + 1], out int w) && w >= 0 && w < VisualActions.WorldNames.Length) return w;
+            return 0;
+        }
+
+        static void LoadWorld(int index)
+        {
+            if (worldGo != null) Object.Destroy(worldGo);
+            worldGo = new GameObject(VisualActions.WorldNames[index] + "World");
+            worldGo.transform.SetParent(root.transform);
+
+            actions.CurrentWorld = index;
+            actions.Status = "";
+            actions.SetBuild(0f);
+            fx.ResetDefaults();
+
+            // neutral state for the new world to override
+            cam.fieldOfView = 30f;
+            cam.clearFlags = CameraClearFlags.Skybox;
+            RenderSettings.fog = false;
+            Shader.SetGlobalFloat("_DjFogDensity", 0f);
+            Shader.SetGlobalFloat("_DjWarp", 0f);
+            Shader.SetGlobalFloat("_DjBeat", 0f);
+            Shader.SetGlobalFloat("_DjRevealR", -1f);
+
+            switch (index)
+            {
+                case 1:
+                    worldGo.AddComponent<UnderwaterWorld>().Init(actions, cam, fx);
+                    strip.ShowCore = true; strip.ShowWarp = false; strip.ShowAdvanced = false;
+                    break;
+                default:
+                    worldGo.AddComponent<SpaceWorld>().Init(actions, cam, fx);
+                    strip.ShowCore = true; strip.ShowWarp = true; strip.ShowAdvanced = false;
+                    break;
             }
         }
     }

@@ -44,3 +44,10 @@ Each jellyfish listens to the shared beat clock (`BeatInBar`, 0-3) and fires a s
 **Recommendation: build them procedurally.** Baked swim clips play at a fixed length, which fights per-jellyfish beat timing. A procedural jellyfish (a bell mesh squashed by a stroke curve, plus trailing tentacles via line renderers or a vertex shader) lets us trigger each stroke exactly on a beat and scale to dozens of them cheaply. It also needs no downloads. Use a purchased or downloaded model only if a hand-animated look is wanted, and then retime its clip to the BPM.
 
 Open questions: glowing bioluminescent look (emissive, dark water) vs. bright stylised; how many jellyfish on screen.
+
+## Underwater world (second scene)
+- [x] First pass: seabed with caustics, reef lit by Drop, jellyfish beat schedules, beat-locked fish schools, bubbles, light shafts, world switching (1 / 2)
+- [ ] Better fish: swap procedural fish for an animated model, or add more species (rays, a whale shadow, a big shark crossing)
+- [ ] Underwater destinations: swim into a kelp forest, a trench, a shipwreck, a bioluminescent cave (like the space destinations)
+- [ ] Surface: a rippling surface seen from below, and a light change as you rise or sink on Build
+- [ ] Tune jelly and fish density, colors and sizes against a real track

@@ -15,6 +15,8 @@ namespace DjVisuals
         public bool Running { get; private set; }
         public int BeatIndex { get; private set; } = -1;   // beats since downbeat (0 = downbeat)
         public float BeatPhase { get; private set; }        // 0..1 within the current beat
+        /// <summary>Continuous position in beats (beat 0 = the synced downbeat). Free-runs at the BPM until Sync is pressed.</summary>
+        public float BeatPos { get; private set; }
         public int BeatInBar => Running && BeatIndex >= 0 ? BeatIndex % BeatsPerBar : -1;
 
         public event Action<int> OnBeat;   // arg: beat index since sync
@@ -45,8 +47,9 @@ namespace DjVisuals
 
         void Update()
         {
-            if (!Running) { BeatPhase = 0; return; }
+            if (!Running) { BeatPhase = 0; BeatPos += Time.deltaTime * (float)Bpm / 60f; return; }
             double beatPos = (Now - startTime) * Bpm / 60.0;
+            BeatPos = (float)beatPos;
             int idx = (int)Math.Floor(beatPos);
             BeatPhase = (float)(beatPos - idx);
             // Fire every beat crossed (normally one) so frame drops don't lose beats.

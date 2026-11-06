@@ -29,7 +29,59 @@ namespace DjVisuals
         void Start()
         {
             Directory.CreateDirectory(OutDir);
-            steps = new[]
+            var script = ScriptName();
+            steps = script == "underwater" ? UnderwaterSteps() : script == "switch" ? SwitchSteps() : SpaceSteps();
+        }
+
+        static string ScriptName()
+        {
+            var a = Environment.GetCommandLineArgs();
+            for (int i = 0; i < a.Length - 1; i++) if (a[i] == "-djscript") return a[i + 1];
+            return "";
+        }
+
+        static Step[] SwitchSteps()
+        {
+            return new[]
+            {
+                new Step { t = 0.3f, kind = "sync" },
+                new Step { t = 1.0f, kind = "shot", arg = "01_space" },
+                new Step { t = 1.5f, kind = "world", arg = "1" },
+                new Step { t = 3.5f, kind = "shot", arg = "02_underwater" },
+                new Step { t = 3.8f, kind = "accent" },
+                new Step { t = 4.0f, kind = "drop" },
+                new Step { t = 4.5f, kind = "world", arg = "0" },
+                new Step { t = 6.5f, kind = "shot", arg = "03_space_again" },
+                new Step { t = 6.8f, kind = "accent" },
+                new Step { t = 7.2f, kind = "drop" },
+                new Step { t = 8.0f, kind = "world", arg = "1" },
+                new Step { t = 9.5f, kind = "shot", arg = "04_underwater_again" },
+                new Step { t = 10.0f, kind = "quit" },
+            };
+        }
+
+        static Step[] UnderwaterSteps()
+        {
+            return new[]
+            {
+                new Step { t = 0.3f, kind = "sync" },
+                new Step { t = 2.0f, kind = "shot", arg = "01_water" },
+                new Step { t = 2.4f, kind = "shot", arg = "02_water_b" },
+                new Step { t = 3.0f, kind = "accent" },
+                new Step { t = 3.5f, kind = "shot", arg = "03_accent" },
+                new Step { t = 4.0f, kind = "build" },
+                new Step { t = 6.0f, kind = "shot", arg = "04_build" },
+                new Step { t = 6.5f, kind = "drop" },
+                new Step { t = 7.2f, kind = "shot", arg = "05_drop_a" },
+                new Step { t = 8.0f, kind = "shot", arg = "06_drop_b" },
+                new Step { t = 11.0f, kind = "shot", arg = "07_reef_lit" },
+                new Step { t = 11.5f, kind = "quit" },
+            };
+        }
+
+        static Step[] SpaceSteps()
+        {
+            return new[]
             {
                 new Step { t = 0.3f, kind = "sync" },        // downbeat at 0.3, then a beat every 0.5 s
                 new Step { t = 0.42f, kind = "shot", arg = "01_downbeat" },
@@ -58,6 +110,7 @@ namespace DjVisuals
                     case "sync": Actions.SetBpm(120); Actions.Sync(); break;
                     case "warp": Actions.ToggleWarp(); break;
                     case "accent": Actions.FireAccent(); break;
+                    case "world": Actions.SelectWorld(int.Parse(s.arg)); break;
                     case "drop": Actions.FireDrop(); break;
                     case "build": Actions.SetBuild(0.8f); break;
                     case "sats": FindFirstObjectByType<SpaceWorld>().DebugSpawnSatellites(); break;

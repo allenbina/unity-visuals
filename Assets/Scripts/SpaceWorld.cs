@@ -191,11 +191,22 @@ namespace DjVisuals
 
             trailMat = Mats.Trail(new Color(3.5f, 3.8f, 4.5f, 1f));
 
+            RenderSettings.fog = false;
             actions.Beat += Flare;
             actions.WarpChanged += OnWarpChanged;
             actions.Drop += OnDrop;
             actions.Accent += OnAccent;
             actions.ResetRequested += OnReset;
+        }
+
+        void OnDestroy()
+        {
+            if (actions == null) return;
+            actions.Beat -= Flare;
+            actions.WarpChanged -= OnWarpChanged;
+            actions.Drop -= OnDrop;
+            actions.Accent -= OnAccent;
+            actions.ResetRequested -= OnReset;
         }
 
         // =================== construction ===================

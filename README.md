@@ -2,7 +2,9 @@
 
 Proof of concept: a beat-synced visual world cropped into three virtual panels on a second monitor, played against a separately running track. Full spec: [Unity-DJ-Visuals-Handoff.md](Unity-DJ-Visuals-Handoff.md).
 
-Current world: **space** (`SpaceWorld.cs`), on **URP with HDR bloom**. Wired controls: BPM, Sync, Beat (engine nozzles ripple-flare on the beat), Warp, Build, Drop, Accent, Reset. Progress is rain-only for now. Switch `UseSpace` in `Bootstrap.cs` to run the rain world instead.
+Two worlds, switched with **1 / 2** or the buttons in the strip: **Space** and **Underwater**. Space is described next; Underwater is described after it.
+
+Space world: **space** (`SpaceWorld.cs`), on **URP with HDR bloom**. Wired controls: BPM, Sync, Beat (engine nozzles ripple-flare on the beat), Warp, Build, Drop, Accent, Reset. Progress is rain-only for now. Switch `UseSpace` in `Bootstrap.cs` to run the rain world instead.
 
 Always moving, no controls needed: a gas giant with a ring, a moon with two sub-moons, a second moon, an ice planet with a ring and moon, satellites crossing the frame, shooting stars, a drifting procedural nebula sky, and a sustained engine flame.
 
@@ -58,3 +60,16 @@ The beat indicator (four cells, downbeat brighter, plus a phase bar) shows drift
 ## Asset dependencies
 
 Packages: URP, glTFast + Draco for Unity (the NASA models are Draco-compressed GLB). Models are committed under `Assets/Resources/Models`. Shaders are found by name; for a standalone build add them to Always Included Shaders. Future worlds (see handoff) may use Kenney, Quaternius, or Synty Simple FX; download into `Assets/ThirdParty/` (git-ignored) and list them here.
+
+
+## Underwater world (key 2)
+
+No ship or vehicle: just the water. Everything is generated in code.
+
+- **Beat:** jellyfish stroke on the beat. Each one is assigned when it spawns: ~45% stroke on beats 1 and 3, ~45% on beats 2 and 4, ~10% free-run on their own tempo, with a few tens of milliseconds of jitter. Fish tails are locked to the beat clock (some one flap per beat, some one per two beats, ~10% keep their own tempo) and the schools kick forward on every beat. Caustics on the seabed and the light shafts flash on the beat.
+- **Accent (A):** a burst of bubbles at a random spot on the seabed; the schools dart.
+- **Build (Up/Down or slider):** a rising current: schools speed up, more bubbles and marine snow, stronger light shafts.
+- **Drop (D):** every jellyfish strokes at once and a ring sweeps the seabed, lighting the bioluminescent reef (stays lit).
+- **Reset (R):** the reef goes dark again.
+
+Files: `Assets/Scripts/UnderwaterWorld.cs` and the `DjSeabed`, `DjJelly`, `DjFish`, `DjWaterSky`, `DjFog` shaders. The rain world still exists in the code but is no longer selectable.
