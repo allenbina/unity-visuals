@@ -11,7 +11,7 @@ namespace DjVisuals
         const int PanelCount = 3;
 
         // Which world to run. Space is wired for the beat only; rain has every control.
-        const bool UseSpace = true;
+        static readonly bool UseSpace = true;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Start()
