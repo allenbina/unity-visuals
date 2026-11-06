@@ -32,25 +32,19 @@ namespace DjVisuals
             steps = new[]
             {
                 new Step { t = 0.3f, kind = "sync" },
-                new Step { t = 0.4f, kind = "shot", arg = "01_home" },
-                new Step { t = 1.0f, kind = "accent" },
-                new Step { t = 1.5f, kind = "shot", arg = "02_accent_mid" },
-                new Step { t = 3.2f, kind = "shot", arg = "02b_pose1_left" },
-                new Step { t = 3.5f, kind = "accent" },
-                new Step { t = 5.4f, kind = "shot", arg = "03_pose2_right" },
-                new Step { t = 5.8f, kind = "accent" },
-                new Step { t = 7.6f, kind = "shot", arg = "04_pose3_center" },
-                new Step { t = 8.0f, kind = "accent" },
-                new Step { t = 9.8f, kind = "shot", arg = "05_pose4_left" },
-                new Step { t = 10.2f, kind = "accent" },
-                new Step { t = 12.0f, kind = "shot", arg = "06_pose0_right" },
-                new Step { t = 12.5f, kind = "warp" },
-                new Step { t = 14.8f, kind = "shot", arg = "07_warp" },
-                new Step { t = 15.3f, kind = "warp" },                // exit: next region streams in (no roll)
-                new Step { t = 16.9f, kind = "shot", arg = "08_arrive_a" },
-                new Step { t = 18.0f, kind = "shot", arg = "08_arrive_b" },
-                new Step { t = 21.0f, kind = "shot", arg = "09_settled" },
-                new Step { t = 21.5f, kind = "quit" },
+                new Step { t = 1.0f, kind = "drop" },    // Ember Nebula
+                new Step { t = 6.6f, kind = "drop" },    // Twin Suns
+                new Step { t = 12.2f, kind = "drop" },   // Shard Field
+                new Step { t = 17.8f, kind = "drop" },   // Event Horizon
+                new Step { t = 20.0f, kind = "shot", arg = "01_bh_arriving" },
+                new Step { t = 23.5f, kind = "shot", arg = "02_bh" },
+                new Step { t = 24.0f, kind = "accent" },
+                new Step { t = 26.0f, kind = "shot", arg = "03_bh_pose1" },
+                new Step { t = 26.3f, kind = "accent" },
+                new Step { t = 28.3f, kind = "shot", arg = "04_bh_pose2" },
+                new Step { t = 28.8f, kind = "accent" },
+                new Step { t = 30.8f, kind = "shot", arg = "05_bh_pose3" },
+                new Step { t = 31.3f, kind = "quit" },
             };
         }
 

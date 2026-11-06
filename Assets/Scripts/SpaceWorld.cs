@@ -99,6 +99,11 @@ namespace DjVisuals
         class Rock { public Transform t; public Transform visual; public Vector3 spin; }
         readonly List<Rock> rocks = new List<Rock>();
         const float RockDrift = 5f;
+        // black hole destination
+        class Infall { public Transform t; public TrailRenderer tr; public float a, r, dir, wob; }
+        readonly List<Infall> infalls = new List<Infall>();
+        Transform discPlane, holeRing, holeRoot;
+        float holeR, discOuter;
         float reveal;              // arrival glow: swells in, then decays over a few seconds
         bool revealRising;
 
@@ -595,6 +600,9 @@ namespace DjVisuals
                 new Dest { name = "Shard Field", a = new Color(0.12f, 0.08f, 0.22f), b = new Color(0.5f, 0.2f, 0.1f), c = new Color(0.2f, 0.3f, 0.5f),
                     intensity = 0.85f, cover = 0f, scale = 1.7f, seed = 23f, sunColor = new Color(1f, 0.95f, 0.9f), sunIntensity = 1.5f,
                     sunEuler = new Vector3(12f, -105f, 0f), ambient = new Color(0.06f, 0.06f, 0.09f), build = BuildAsteroidField },
+                new Dest { name = "Event Horizon", a = new Color(0.02f, 0.04f, 0.14f), b = new Color(0.2f, 0.05f, 0.28f), c = new Color(0.45f, 0.16f, 0.04f),
+                    intensity = 0.75f, cover = -0.02f, scale = 2.0f, seed = 37f, sunColor = new Color(1f, 0.66f, 0.38f), sunIntensity = 1.3f,
+                    sunEuler = new Vector3(0f, 0f, 0f), ambient = new Color(0.03f, 0.03f, 0.05f), build = BuildEventHorizon },
             };
         }
 
@@ -751,6 +759,8 @@ namespace DjVisuals
             billboards.Clear();
             rocks.Clear();
             stretch.Clear();
+            infalls.Clear();
+            discPlane = null; holeRing = null; holeRoot = null;
             lastStretch = -1f;
 
             skyMat.SetColor("_ColA", d.a);
@@ -837,6 +847,96 @@ namespace DjVisuals
             sunLight.transform.rotation = Quaternion.LookRotation((-orange.root.position).normalized);
         }
 
+        void BuildEventHorizon()
+        {
+            const float R = 7.5f;
+            holeR = R;
+            var pos = new Vector3(-34f, -4f, 70f);
+            var hole = MakeBody("BlackHole", null, pos, R, Mats.Unlit(Color.black), 0f, 0f, 0f, 0f, 0f, 0f);
+            holeRoot = hole.root;
+
+            // Accretion disc, tilted a little off edge-on. The back half hides behind the shadow sphere (depth test).
+            float inner = R * 1.12f;
+            discOuter = R * 5.6f;
+            var disc = new GameObject("AccretionDisc");
+            disc.transform.SetParent(hole.root, false);
+            disc.transform.localRotation = Quaternion.Euler(-18f, 0f, 6f);
+            disc.AddComponent<MeshFilter>().sharedMesh = RingMesh(inner, discOuter, 160);
+            disc.AddComponent<MeshRenderer>().sharedMaterial = Mats.Accretion();
+            discPlane = disc.transform;
+
+            // Photon ring + lensed arcs on a camera-facing quad that sits just in front of the shadow (repositioned every frame).
+            float H = R * 3.4f;
+            var pr = Mats.PhotonRing(new Color(4f, 2.6f, 1.4f, 1f));
+            pr.SetFloat("_RingR", R * 1.07f / H);
+            pr.SetFloat("_RingW", 0.018f);
+            var q = Mats.Prim(PrimitiveType.Quad, hole.root, "PhotonRing", Vector3.zero, new Vector3(H * 2f, H * 2f, 1f), pr);
+            billboards.Add(q.transform);
+            holeRing = q.transform;
+
+            // Planets orbiting in the disc plane.
+            Body Orbiter(string n, float r, Material m, float orbit, float speed, float phase, float spin)
+            {
+                var b = MakeBody(n, hole, default, r, m, orbit, speed, -18f, phase, 0.03f, spin);
+                b.tiltYaw = 0f;   // same plane as the disc
+                return b;
+            }
+            Orbiter("Ash", 3.2f, Mats.Planet(new Color(0.18f, 0.06f, 0.05f), new Color(0.8f, 0.35f, 0.2f), 2f, 0.3f, 3.5f, new Color(1f, 0.4f, 0.15f) * 1.6f, 1.4f, 150f), 52f, 4.2f, 20f, 10f);
+            Orbiter("Gale", 5.2f, Mats.Planet(new Color(0.05f, 0.18f, 0.25f), new Color(0.55f, 0.85f, 0.9f), 5f, 0.8f, 2.4f, new Color(0.4f, 0.85f, 1f) * 1.8f, 1.6f, 160f), 74f, 2.6f, 140f, 6f);
+            Orbiter("Shard", 1.7f, Mats.Planet(new Color(0.35f, 0.37f, 0.42f), new Color(0.85f, 0.88f, 0.95f), 1f, 0.05f, 5f, new Color(0.6f, 0.8f, 1f), 0.5f, 170f), 63f, 3.2f, 250f, 14f);
+
+            // Matter spiralling in: bright specks with long fading trails, speeding up as they fall.
+            var trailMat2 = Mats.Trail(new Color(5f, 2.6f, 1f, 1f), 1.0f);
+            for (int i = 0; i < 30; i++)
+            {
+                var go = new GameObject("Infall" + i);
+                go.transform.SetParent(systemRoot);
+                var tr = go.AddComponent<TrailRenderer>();
+                tr.time = 1.7f;
+                tr.widthCurve = AnimationCurve.Linear(0f, 0.8f, 1f, 0f);
+                tr.sharedMaterial = trailMat2;
+                tr.alignment = LineAlignment.View;
+                tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                var g = new Gradient();
+                g.SetKeys(new[] { new GradientColorKey(new Color(1f, 0.95f, 0.8f), 0f), new GradientColorKey(new Color(1f, 0.5f, 0.12f), 0.35f), new GradientColorKey(new Color(0.7f, 0.1f, 0.05f), 1f) },
+                          new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.7f, 0.4f), new GradientAlphaKey(0f, 1f) });
+                tr.colorGradient = g;
+                var f = new Infall { t = go.transform, tr = tr, a = Random.Range(0f, 6.283f), r = Random.Range(R * 1.3f, discOuter * 1.3f), dir = 1f, wob = Random.Range(0f, 6.283f) };
+                go.transform.position = discPlane.TransformPoint(new Vector3(Mathf.Cos(f.a) * f.r, 0f, Mathf.Sin(f.a) * f.r));
+                tr.Clear();
+                infalls.Add(f);
+            }
+
+            // light travelling from the hole toward the scene, tipped a little toward the camera
+            sunLight.transform.rotation = Quaternion.LookRotation((-pos).normalized + new Vector3(0.15f, -0.1f, -0.5f));
+        }
+
+        void UpdateEventHorizon(float dt)
+        {
+            if (discPlane == null) return;
+            // keep the photon ring quad between the shadow and the camera so it frames the shadow from any angle
+            if (holeRing != null)
+                holeRing.position = holeRoot.position + (cam.transform.position - holeRoot.position).normalized * (holeR * 1.3f);
+
+            foreach (var f in infalls)
+            {
+                float rr = Mathf.Max(f.r, holeR);
+                f.a += 2.6f * Mathf.Pow(holeR / rr, 1.5f) * dt;
+                f.r -= (3f + 25f * (holeR / rr) * (holeR / rr)) * dt;
+                if (f.r < holeR * 1.08f)
+                {
+                    f.r = Random.Range(discOuter * 0.85f, discOuter * 1.4f);
+                    f.a = Random.Range(0f, 6.283f);
+                }
+                float h = Mathf.Sin(f.a * 0.5f + f.wob) * 1.6f * Mathf.Clamp01((f.r - holeR) / discOuter);
+                var wp = discPlane.TransformPoint(new Vector3(Mathf.Cos(f.a) * f.r, h, Mathf.Sin(f.a) * f.r));
+                bool respawned = (wp - f.t.position).sqrMagnitude > 900f;   // a long jump: do not draw a line across the scene
+                f.t.position = wp;
+                if (respawned) f.tr.Clear();
+                f.tr.widthMultiplier = Mathf.Lerp(0.25f, 1f, Mathf.Clamp01((f.r - holeR) / (holeR * 2f)));
+            }
+        }
+
         void BuildAsteroidField()
         {
             var mats = new[]
@@ -881,6 +981,7 @@ namespace DjVisuals
             float t = Time.time;
 
             UpdateTransition(dt);
+            UpdateEventHorizon(dt);
             UpdateWarp(dt);
             UpdateShip(dt, t);
             UpdateBodies(dt);

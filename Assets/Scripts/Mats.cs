@@ -72,6 +72,18 @@ namespace DjVisuals
             return m;
         }
 
+        public static Material Accretion()
+        {
+            return new Material(Get("DjVisuals/Accretion"));
+        }
+
+        public static Material PhotonRing(Color hdr)
+        {
+            var m = new Material(Get("DjVisuals/PhotonRing"));
+            m.SetColor("_Color", hdr);
+            return m;
+        }
+
         public static Material NebulaSky()
         {
             return new Material(Get("DjVisuals/NebulaSky"));

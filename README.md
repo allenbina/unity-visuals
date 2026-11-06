@@ -6,7 +6,7 @@ Current world: **space** (`SpaceWorld.cs`), on **URP with HDR bloom**. Wired con
 
 Always moving, no controls needed: a gas giant with a ring, a moon with two sub-moons, a second moon, an ice planet with a ring and moon, satellites crossing the frame, shooting stars, a drifting procedural nebula sky, and a sustained engine flame.
 
-**Warp (W):** charge, white flash, star streaks, fisheye bend, chromatic aberration, big sustained blast. Dropping out of a real jump lands in the **next destination** (cycle: Home System > Ember Nebula > Twin Suns > Shard Field), shown in the control strip. The transition is layered: the old region accelerates away and every object in it is **stretched along the direction of travel in proportion to its speed**; the warp tunnel runs empty; the next region comes in from far ahead as long streaks that relax into shape as it decelerates; an **iris** vignette closes and opens; a soft **light sweep** crosses all three panels; dark **foreground shards** whip past close to the camera for depth; and the arrival brightness swells in gently with no hard flash. Idea references: the layered 2.5D reveals in Sundered: Eldritch Edition (multiplane parallax, light reveals), used loosely, not copied.
+**Warp (W):** charge, white flash, star streaks, fisheye bend, chromatic aberration, big sustained blast. Dropping out of a real jump lands in the **next destination** (cycle: Home System > Ember Nebula > Twin Suns > Shard Field > Event Horizon), shown in the control strip. The transition is layered: the old region accelerates away and every object in it is **stretched along the direction of travel in proportion to its speed**; the warp tunnel runs empty; the next region comes in from far ahead as long streaks that relax into shape as it decelerates; an **iris** vignette closes and opens; a soft **light sweep** crosses all three panels; dark **foreground shards** whip past close to the camera for depth; and the arrival brightness swells in gently with no hard flash. Idea references: the layered 2.5D reveals in Sundered: Eldritch Edition (multiplane parallax, light reveals), used loosely, not copied.
 
 **Build / Drop / Accent / Reset (space):** Build (Up/Down or slider) pre-stretches the stars and swells the engines without jumping. Drop (D) jumps to the next destination, then Build eases back to 0 (if you are in warp, Drop is the same as leaving warp). Accent (A) fires shooting stars and an engine surge, **moves the ship into a different panel (left / center / right) and swings the camera to a new angle** (cycles through 5 angles). Reset (R) returns to the Home System.
 
@@ -50,7 +50,7 @@ The beat indicator (four cells, downbeat brighter, plus a phase bar) shows drift
 - `Assets/Scripts/VisualActions.cs` the one set of scene actions and events.
 - `Assets/Scripts/SpaceWorld.cs` the space world; `RainWorld.cs` the rain world.
 - `Assets/Scripts/PostFx.cs` bloom, lens distortion, chromatic aberration (built in code).
-- `Assets/Shaders/` procedural nebula sky, planet, ring, additive glow shaders.
+- `Assets/Shaders/` procedural nebula sky, planet, ring, additive glow, accretion disc and photon ring shaders.
 - `Assets/Editor/` URP auto-setup and the headless capture tool.
 - `Assets/Scripts/ControlStrip.cs` panels and controls (IMGUI).
 - `Assets/Scripts/Bootstrap.cs` assembles everything; `PanelCount` there sets the panel count.

@@ -6,7 +6,8 @@ Not in priority order unless noted.
 - [x] Beat: engine rings ripple-flare (written, compiles, not yet seen running)
 - [x] Accent (shooting stars + engine surge), Build (pre-stretch), Drop (jump to next destination)
 - [x] Destinations: Home System, Ember Nebula, Twin Suns, Shard Field
-- [ ] Next destination idea: black hole with planets orbiting it and trails of matter falling in (accretion disc, lensing)
+- [x] Event Horizon destination: black hole, accretion disc, photon ring, orbiting planets, infalling trails
+- [ ] Black hole: real gravitational lensing of the background stars (needs a screen-space distortion pass); right now the lensed arc is a shader fake
 - [x] Layered region transition (speed stretch, roll, iris, light sweep, foreground shards)
 - [ ] Tune destination order/length; let the performer pick a destination directly
 - [ ] Transition knobs worth exposing: stretch amount, sweep direction
