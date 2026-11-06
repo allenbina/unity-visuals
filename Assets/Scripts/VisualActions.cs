@@ -20,7 +20,8 @@ namespace DjVisuals
         public event Action<int> Progressed;    // new level
         public event Action ResetRequested;
 
-        void Awake() { Clock.OnBeat += i => Beat?.Invoke(i); }
+        // Not Awake: Bootstrap assigns Clock after AddComponent, so Awake would see null.
+        void Start() { Clock.OnBeat += i => Beat?.Invoke(i); }
 
         public void SetBpm(double bpm) => Clock.SetBpm(bpm);
         public void Sync() => Clock.Sync();
