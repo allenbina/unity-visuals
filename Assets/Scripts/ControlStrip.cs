@@ -14,7 +14,8 @@ namespace DjVisuals
         public RenderTexture Wide;
         public int PanelCount = 3;
         public bool ShowCore = false;      // Accent / Drop / Reset / Build, without Progress
-        public bool ShowWarp = false;      // Warp button (space world)
+        public bool ShowWarp = false;      // Warp button (space world); Surge in the underwater world
+        public string WarpName = "Warp";
         public bool ShowAdvanced = true;   // Accent/Build/Drop/Progress/Reset; off while a world only handles the beat
 
         string bpmText = "120";
@@ -62,7 +63,7 @@ namespace DjVisuals
             {
                 var old = GUI.backgroundColor;
                 if (Actions.Warping) GUI.backgroundColor = new Color(0.4f, 0.8f, 1f);
-                if (GUILayout.Button(Actions.Warping ? "WARP ON (W)" : "Warp (W)", GUILayout.Width(100))) Actions.ToggleWarp();
+                if (GUILayout.Button(Actions.Warping ? WarpName.ToUpper() + " ON (W)" : WarpName + " (W)", GUILayout.Width(100))) Actions.ToggleWarp();
                 GUI.backgroundColor = old;
             }
             if (ShowCore || ShowAdvanced)

@@ -115,11 +115,11 @@ namespace DjVisuals
                     break;
                 case 1:
                     worldGo.AddComponent<UnderwaterWorld>().Init(actions, cam, fx);
-                    strip.ShowCore = true; strip.ShowWarp = false; strip.ShowAdvanced = false;
+                    strip.ShowCore = true; strip.ShowWarp = true; strip.WarpName = "Surge"; strip.ShowAdvanced = false;
                     break;
                 default:
                     worldGo.AddComponent<SpaceWorld>().Init(actions, cam, fx);
-                    strip.ShowCore = true; strip.ShowWarp = true; strip.ShowAdvanced = false;
+                    strip.ShowCore = true; strip.ShowWarp = true; strip.WarpName = "Warp"; strip.ShowAdvanced = false;
                     break;
             }
         }

@@ -9,7 +9,9 @@ namespace DjVisuals
     ///   Beat   -> jellyfish stroke (each one on beats 1&amp;3, on 2&amp;4, or ~10% free-running), fish tails and wings lock to the beat
     ///   Accent -> burst of bubbles, schools dart, a big animal (whale, shark, manta, dolphin) glides through
     ///   Build  -> rising current: schools speed up, more bubbles and marine snow, stronger light shafts
-    ///   Drop   -> a wall of bubbles rises from the bottom; behind it the world swaps between the deep and the coral reef.
+    ///   Surge  -> (W) the build-up: bubbles stream up faster and thicker, the camera rumbles and widens, schools and jellyfish are
+    ///             pushed along by the current. Builds for several seconds and holds until you drop.
+    ///   Drop   -> the release: a wall of bubbles rises from the bottom; behind it the world swaps between the deep and the coral reef.
     ///             Arriving in the deep, a ring of light sweeps the seabed and lights the bioluminescent coral.
     ///   Reset  -> dark deep reef again
     /// Creatures come from tools/convert_fish.py (CC0 Quaternius models plus extra reef fish); the reef is built in code.
@@ -99,7 +101,9 @@ namespace DjVisuals
         float cruiserTimer = 8f;
 
         // ---- atmosphere ----
-        ParticleSystem snow, bubbles;
+        ParticleSystem snow, bubbles, rushBubbles;
+        float rush;              // 0..1, the surge build-up
+        bool surgeOn;
         BubbleWall wall;
         bool wallSwapped;
         readonly List<Transform> rays = new List<Transform>();
@@ -156,6 +160,7 @@ namespace DjVisuals
             actions.Beat += OnBeat;
             actions.Accent += OnAccent;
             actions.Drop += OnDrop;
+            actions.WarpChanged += OnSurge;
             actions.ResetRequested += OnReset;
             actions.Status = "Underwater";
         }
@@ -166,6 +171,7 @@ namespace DjVisuals
             actions.Beat -= OnBeat;
             actions.Accent -= OnAccent;
             actions.Drop -= OnDrop;
+            actions.WarpChanged -= OnSurge;
             actions.ResetRequested -= OnReset;
         }
 
@@ -351,31 +357,74 @@ namespace DjVisuals
 
         static Mesh BuildJellyMesh()
         {
+            // vertex color: r = ribbon/tube flag, g = position along it, b = bell rim weight, a = part (see DjJelly.shader)
             var verts = new List<Vector3>(); var nrm = new List<Vector3>(); var cols = new List<Color>(); var tris = new List<int>();
-            const int rings = 5, seg = 10;      // few segments: a faceted bell
-            float thMax = Mathf.PI * 0.5f * 1.08f;
-            for (int i = 0; i <= rings; i++)
+            const int rings = 6, seg = 8;               // chunky facets, with a zigzag crown at the rim
+            float thMax = Mathf.PI * 0.5f * 1.1f;
+
+            void Dome(float scale, float yOff, float part, float crown)
             {
-                float th = i / (float)rings * thMax;
-                float r = Mathf.Sin(th), y = Mathf.Cos(th) * 0.75f;
-                for (int j = 0; j < seg; j++)
+                int start = verts.Count;
+                for (int i = 0; i <= rings; i++)
                 {
-                    float a = j / (float)seg * Mathf.PI * 2f;
-                    verts.Add(new Vector3(Mathf.Cos(a) * r, y, Mathf.Sin(a) * r));
-                    nrm.Add(new Vector3(Mathf.Cos(a) * Mathf.Sin(th), Mathf.Cos(th), Mathf.Sin(a) * Mathf.Sin(th)).normalized);
-                    cols.Add(new Color(0f, 0f, 0f, 1f));
+                    float th = i / (float)rings * thMax;
+                    float rimW = Mathf.Pow(i / (float)rings, 2.5f);
+                    float r = Mathf.Sin(th) * scale, y = Mathf.Cos(th) * 0.75f * scale + yOff;
+                    for (int j = 0; j < seg; j++)
+                    {
+                        float a = j / (float)seg * Mathf.PI * 2f;
+                        float lobe = 1f + crown * ((j & 1) == 0 ? 1f : -1f) * rimW;
+                        verts.Add(new Vector3(Mathf.Cos(a) * r * lobe, y, Mathf.Sin(a) * r * lobe));
+                        nrm.Add(Vector3.up);
+                        cols.Add(new Color(0f, i / (float)rings, rimW, part));
+                    }
                 }
+                for (int i = 0; i < rings; i++)
+                    for (int j = 0; j < seg; j++)
+                    {
+                        int a = start + i * seg + j, b = start + i * seg + (j + 1) % seg, c = a + seg, d = b + seg;
+                        tris.Add(a); tris.Add(c); tris.Add(b);
+                        tris.Add(b); tris.Add(c); tris.Add(d);
+                    }
             }
-            for (int i = 0; i < rings; i++)
-                for (int j = 0; j < seg; j++)
-                {
-                    int a = i * seg + j, b = i * seg + (j + 1) % seg, c = a + seg, d = b + seg;
-                    tris.Add(a); tris.Add(c); tris.Add(b);
-                    tris.Add(b); tris.Add(c); tris.Add(d);
-                }
-            // tentacle ribbons hanging from the rim
+            Dome(1f, 0f, 1f, 0.09f);        // outer shell
+            Dome(0.8f, -0.03f, 0.9f, 0.07f); // inner shell: a second surface so the bell reads as a volume
+            Dome(0.34f, 0.1f, 0.7f, 0.12f);  // glowing core
+
             float rimR = Mathf.Sin(thMax) * 0.95f, rimY = Mathf.Cos(thMax) * 0.75f;
-            const int tents = 9, tsegs = 9;
+
+            // four thick oral arms: 3-sided tubes hanging from under the core
+            const int armSegs = 7;
+            for (int k = 0; k < 4; k++)
+            {
+                float a = k / 4f * Mathf.PI * 2f + 0.4f;
+                var radial = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                var tangent = new Vector3(-radial.z, 0f, radial.x);
+                int start = verts.Count;
+                for (int s = 0; s <= armSegs; s++)
+                {
+                    float L = s / (float)armSegs;
+                    var c0 = radial * (0.28f * (1f - 0.4f * L)) + new Vector3(0f, rimY + 0.12f - L * 1.7f, 0f);
+                    float rad = 0.085f * (1f - L * 0.7f);
+                    for (int q = 0; q < 3; q++)
+                    {
+                        float phi = q / 3f * Mathf.PI * 2f + L * 2.2f;   // a slow twist
+                        verts.Add(c0 + (radial * Mathf.Cos(phi) + tangent * Mathf.Sin(phi)) * rad);
+                        nrm.Add(radial);
+                        cols.Add(new Color(1f, L, 0f, 0.5f));
+                    }
+                }
+                for (int s = 0; s < armSegs; s++)
+                    for (int q = 0; q < 3; q++)
+                    {
+                        int a0 = start + s * 3 + q, a1 = start + s * 3 + (q + 1) % 3, b0 = a0 + 3, b1 = a1 + 3;
+                        tris.Add(a0); tris.Add(b0); tris.Add(a1);
+                        tris.Add(a1); tris.Add(b0); tris.Add(b1);
+                    }
+            }
+
+            // thin tentacle ribbons hanging from the rim
+            const int tents = 12, tsegs = 9;
             for (int k = 0; k < tents; k++)
             {
                 float a = k / (float)tents * Mathf.PI * 2f + 0.2f * Mathf.Sin(k * 1.7f);
@@ -385,11 +434,11 @@ namespace DjVisuals
                 for (int s = 0; s <= tsegs; s++)
                 {
                     float L = s / (float)tsegs;
-                    var c0 = radial * (rimR * (1f - 0.35f * L)) + new Vector3(0f, rimY - L * 2.6f, 0f);
+                    var c0 = radial * (rimR * (1f - 0.35f * L)) + new Vector3(0f, rimY - L * 2.8f, 0f);
                     float w = 0.05f * (1f - L * 0.6f);
                     verts.Add(c0 - tangent * w); verts.Add(c0 + tangent * w);
                     nrm.Add(radial); nrm.Add(radial);
-                    cols.Add(new Color(1f, L, 0f, 1f)); cols.Add(new Color(1f, L, 0f, 1f));
+                    cols.Add(new Color(1f, L, 0f, 0f)); cols.Add(new Color(1f, L, 0f, 0f));
                 }
                 for (int s = 0; s < tsegs; s++)
                 {
@@ -400,7 +449,7 @@ namespace DjVisuals
             }
             var m = new Mesh { name = "Jelly" };
             m.SetVertices(verts); m.SetNormals(nrm); m.SetColors(cols); m.SetTriangles(tris, 0);
-            m.bounds = new Bounds(new Vector3(0f, -1f, 0f), new Vector3(3f, 5f, 3f));
+            m.bounds = new Bounds(new Vector3(0f, -1f, 0f), new Vector3(4f, 6f, 4f));
             return m;
         }
 
@@ -591,6 +640,31 @@ namespace DjVisuals
             brend.sharedMaterial = Mats.Bubble(new Color(1.0f, 1.6f, 2.0f, 1f), 0.1f, false);
             bubbles.Play();
 
+            // the surge: a stream of bubbles from below the view, thicker and faster as the build-up grows
+            var rg = new GameObject("RushBubbles");
+            rg.transform.SetParent(transform);
+            rg.transform.position = new Vector3(0f, -30f, 18f);
+            rg.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);
+            rushBubbles = rg.AddComponent<ParticleSystem>();
+            rushBubbles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var rm = rushBubbles.main;
+            rm.loop = true; rm.playOnAwake = false;
+            rm.startLifetime = 4.2f;
+            rm.startSpeed = new ParticleSystem.MinMaxCurve(10f, 16f);
+            rm.startSize = new ParticleSystem.MinMaxCurve(0.6f, 2.4f);
+            rm.startColor = new Color(1f, 1f, 1f, 0.9f);
+            rm.maxParticles = 6000;
+            rm.simulationSpace = ParticleSystemSimulationSpace.World;
+            var rsh = rushBubbles.shape; rsh.shapeType = ParticleSystemShapeType.Box; rsh.scale = new Vector3(150f, 1f, 50f);
+            var rem = rushBubbles.emission; rem.rateOverTime = 0f;
+            var rvel = rushBubbles.velocityOverLifetime; rvel.enabled = true; rvel.space = ParticleSystemSimulationSpace.World;
+            rvel.x = new ParticleSystem.MinMaxCurve(-0.8f, 0.8f); rvel.z = new ParticleSystem.MinMaxCurve(-0.5f, 0.5f); rvel.y = 0f;
+            var rrend = rg.GetComponent<ParticleSystemRenderer>();
+            rrend.renderMode = ParticleSystemRenderMode.Mesh;
+            rrend.mesh = BubbleWall.SingleBubble(0.5f);
+            rrend.sharedMaterial = Mats.Bubble(new Color(1.0f, 1.6f, 2.0f, 1f), 0.1f, false);
+            rushBubbles.Play();
+
             // the wall of bubbles for the Drop
             wall = gameObject.AddComponent<BubbleWall>();
             wall.Build(CamPos, 3400, cam);
@@ -614,9 +688,9 @@ namespace DjVisuals
         void Stroke(Jelly j)
         {
             j.pulseT = 0f;
-            j.vel.y += 1.5f + 0.5f * j.scale;               // each stroke pushes it up and a little forward
-            j.vel.z += Random.Range(-0.4f, 0.6f);
-            j.vel.x += Random.Range(-0.4f, 0.4f);
+            j.vel.y += 2.6f + 0.8f * j.scale;               // each stroke is a real push up and a little forward
+            j.vel.z += Random.Range(-0.5f, 0.9f);
+            j.vel.x += Random.Range(-0.7f, 0.7f);
         }
 
         void OnBeat(int idx)
@@ -649,6 +723,8 @@ namespace DjVisuals
             SendCruiser();                                     // and something big glides through
         }
 
+        void OnSurge(bool on) { surgeOn = on; }
+
         void OnDrop()
         {
             if (wall.Active) return;       // one wall at a time
@@ -659,6 +735,7 @@ namespace DjVisuals
         void SwapScenes()
         {
             wallSwapped = true;
+            if (actions.Warping) actions.ToggleWarp();   // the build-up is released
             SetScene(!reef, true);
             flash = 0.7f;
             foreach (var j in jellies) j.delay = Random.Range(0f, 0.2f);   // everything strokes at once
@@ -683,7 +760,8 @@ namespace DjVisuals
         {
             float dt = Time.deltaTime;
             float t = Time.time;
-            float build = actions.Build;
+            rush = Mathf.MoveTowards(rush, surgeOn ? 1f : 0f, dt * (surgeOn ? 0.17f : 1.1f));   // about 6 s to full build-up, 1 s to let go
+            float build = Mathf.Max(actions.Build, rush);
 
             beatEnv = Mathf.Max(0f, beatEnv - dt * 5f);
             surge = Mathf.Max(0f, surge - dt * 1.5f);
@@ -697,6 +775,7 @@ namespace DjVisuals
             UpdateFish(dt, t, build);
             UpdateCruisers(dt, t);
             UpdateAtmosphere(t, build);
+            UpdateRush(t);
             UpdateHalos(dt);
             UpdateCameraAndPost(t, build);
         }
@@ -723,10 +802,13 @@ namespace DjVisuals
                 if (j.mode == 2) { j.timer -= dt; if (j.timer <= 0f) { Stroke(j); j.timer = j.period * Random.Range(0.9f, 1.1f); } }
 
                 j.pulseT += dt;
-                float env = j.pulseT < 0.08f ? j.pulseT / 0.08f : Mathf.Exp(-(j.pulseT - 0.08f) * 3.2f);   // fast contraction, slow relax
+                // fast squeeze, then relax with an overshoot (negative = the bell flares past its resting shape)
+                float u = j.pulseT - 0.12f;
+                float env = j.pulseT < 0.12f ? Mathf.Sin(j.pulseT / 0.12f * Mathf.PI * 0.5f) : Mathf.Exp(-u * 2.6f) * Mathf.Cos(u * 7f);
 
-                j.vel.y -= 0.4f * dt;                                         // sinks between strokes
-                j.vel *= Mathf.Exp(-1.1f * dt);
+                j.vel.y -= 0.3f * dt;                                         // sinks slowly between strokes
+                j.vel.y += rush * 2.5f * dt;                                  // the surge current carries them up
+                j.vel *= Mathf.Exp(-0.9f * dt);
                 var p = j.t.position + j.vel * dt + new Vector3(Mathf.Sin(t * 0.2f + j.phase) * 0.3f * dt, 0f, 0f);
                 if (p.y > 22f) { p.y = -14f; p.x = Random.Range(-70f, 70f); p.z = Random.Range(6f, 65f); }
                 if (p.y < -12f) { p.y = -12f; j.vel.y = Mathf.Max(0f, j.vel.y); }
@@ -835,18 +917,28 @@ namespace DjVisuals
             }
         }
 
+        void UpdateRush(float t)
+        {
+            var em = rushBubbles.emission;
+            em.rateOverTime = 1300f * rush * rush;
+            var m = rushBubbles.main;
+            m.startSpeed = new ParticleSystem.MinMaxCurve(10f + 6f * rush, 16f + 10f * rush);
+        }
+
         void UpdateCameraAndPost(float t, float build)
         {
             var pos = CamPos + new Vector3(Mathf.Sin(t * 0.05f) * 5f, Mathf.Sin(t * 0.13f) * 0.8f, 0f);
+            float shake = rush * rush * 0.22f;
+            pos += new Vector3(Mathf.Sin(t * 41f), Mathf.Sin(t * 53f + 1f), 0f) * shake;
             cam.transform.position = pos;
             cam.transform.rotation = Quaternion.LookRotation(CamLook - pos);
             float we = wall.Env;
-            cam.fieldOfView = 30f + build * 3f + flash * 2f + we * 4f;
+            cam.fieldOfView = 30f + build * 3f + flash * 2f + we * 4f + rush * 3f * (1f + beatEnv * 0.15f);
 
-            fx.Bloom.intensity.value = bloomBase + beatEnv * 0.25f + build * 0.5f + flash * 2.5f + we * 1.2f;
+            fx.Bloom.intensity.value = bloomBase + beatEnv * 0.25f + build * 0.5f + flash * 2.5f + we * 1.2f + rush * 0.7f;
             fx.Adjust.postExposure.value = flash * 0.9f;
-            fx.Chroma.intensity.value = 0.05f + build * 0.15f + flash * 0.3f + we * 0.35f;
-            fx.Vig.intensity.value = 0.3f + build * 0.1f;
+            fx.Chroma.intensity.value = 0.05f + build * 0.15f + flash * 0.3f + we * 0.35f + rush * rush * 0.3f;
+            fx.Vig.intensity.value = 0.3f + build * 0.1f + rush * 0.15f;
         }
     }
 }
