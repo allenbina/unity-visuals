@@ -2,7 +2,7 @@
 
 Proof of concept: a beat-synced visual world cropped into three virtual panels on a second monitor, played against a separately running track. Full spec: [Unity-DJ-Visuals-Handoff.md](Unity-DJ-Visuals-Handoff.md).
 
-Two worlds, switched with **1 / 2** or the buttons in the strip: **Space** and **Underwater**. Space is described next; Underwater is described after it.
+Three worlds, switched with **1 / 2 / 3** or the buttons in the strip: **Space** and **Underwater**. Space is described next; Underwater is described after it.
 
 Space world: **space** (`SpaceWorld.cs`), on **URP with HDR bloom**. Wired controls: BPM, Sync, Beat (engine nozzles ripple-flare on the beat), Warp, Build, Drop, Accent, Reset. Progress is rain-only for now. Switch `UseSpace` in `Bootstrap.cs` to run the rain world instead.
 
@@ -73,3 +73,15 @@ No ship or vehicle: just the water. Everything is generated in code.
 - **Reset (R):** the reef goes dark again.
 
 Files: `Assets/Scripts/UnderwaterWorld.cs` and the `DjSeabed`, `DjJelly`, `DjFish`, `DjWaterSky`, `DjFog` shaders. The rain world still exists in the code but is no longer selectable.
+
+
+## Cube world (key 3): a three-screen take on Beats 'n' Cubes
+
+A copy-in-spirit of the 2007 Etienne de Crecy show (see `docs/beats-n-cubes-research.md` and `docs/beats-n-cubes-scenes.md`). A 3x3x3 frame of boxes whose edges glow like projected light on scaffolding tubes, with bright dots at the joints and an open center column where the DJ stood. Black void, cool white-cyan with red at the start.
+
+- **Progress (P):** next phase. The 13 phases follow the 13 scenes of the reference video: dim red, red flood and a single white line, trace, reveal, look down, tumble, cells play, slide, extrude, dissolve, build, breathe, subdivide. Reset (R) goes back to phase 1.
+- **Three screens:** front-on phases show one cube per panel, with the outer two echoing the center one beat late. Close-up, high-angle and tumble phases pack the three cubes together so the structure spans all panels. The "tunnel" view wraps one cube around the camera so the side panels show its walls.
+- **Drop (D):** floods the whole cube white. **Accent (A):** a bar of light sweeps across the three panels. **Build:** brighter lines and more camera drift.
+- Everything is a function of the beat clock, so it stays in time at any BPM.
+
+Files: `Assets/Scripts/CubeWorld.cs` and `Assets/Shaders/DjBoxEdge.shader`.

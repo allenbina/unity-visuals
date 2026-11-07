@@ -30,7 +30,7 @@ namespace DjVisuals
         {
             Directory.CreateDirectory(OutDir);
             var script = ScriptName();
-            steps = script == "underwater" ? UnderwaterSteps() : script == "switch" ? SwitchSteps() : SpaceSteps();
+            steps = script == "underwater" ? UnderwaterSteps() : script == "switch" ? SwitchSteps() : script == "cube" ? CubeSteps() : SpaceSteps();
         }
 
         static string ScriptName()
@@ -38,6 +38,22 @@ namespace DjVisuals
             var a = Environment.GetCommandLineArgs();
             for (int i = 0; i < a.Length - 1; i++) if (a[i] == "-djscript") return a[i + 1];
             return "";
+        }
+
+        static Step[] CubeSteps()
+        {
+            // 13 phases, 6 seconds each (12 beats at 120 BPM): a shot early and a shot late in each
+            var list = new System.Collections.Generic.List<Step>();
+            list.Add(new Step { t = 0.3f, kind = "sync" });
+            for (int p = 0; p < 13; p++)
+            {
+                float t0 = 0.4f + p * 6f;
+                if (p > 0) list.Add(new Step { t = t0, kind = "progress" });
+                list.Add(new Step { t = t0 + 1.7f, kind = "shot", arg = "p" + (p + 1).ToString("00") + "_a" });
+                list.Add(new Step { t = t0 + 4.9f, kind = "shot", arg = "p" + (p + 1).ToString("00") + "_b" });
+            }
+            list.Add(new Step { t = 0.4f + 13 * 6f, kind = "quit" });
+            return list.ToArray();
         }
 
         static Step[] SwitchSteps()
@@ -110,6 +126,7 @@ namespace DjVisuals
                     case "sync": Actions.SetBpm(120); Actions.Sync(); break;
                     case "warp": Actions.ToggleWarp(); break;
                     case "accent": Actions.FireAccent(); break;
+                    case "progress": Actions.Advance(); break;
                     case "world": Actions.SelectWorld(int.Parse(s.arg)); break;
                     case "drop": Actions.FireDrop(); break;
                     case "build": Actions.SetBuild(0.8f); break;

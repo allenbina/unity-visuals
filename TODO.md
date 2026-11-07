@@ -51,3 +51,12 @@ Open questions: glowing bioluminescent look (emissive, dark water) vs. bright st
 - [ ] Underwater destinations: swim into a kelp forest, a trench, a shipwreck, a bioluminescent cave (like the space destinations)
 - [ ] Surface: a rippling surface seen from below, and a light change as you rise or sink on Build
 - [ ] Tune jelly and fish density, colors and sizes against a real track
+
+## Cube world (third scene, from the Beats 'n' Cubes reference)
+- [x] First pass: edge-glow boxes, 13 phases from the reference scenes, three-panel layouts, Drop / Accent / Build
+- [ ] Phase 6 (tumble) framing is rough
+- [ ] The reveal flash is a flat soft disc; make it a real backlit flare
+- [ ] A DJ silhouette in the open center cell, as in the video
+- [ ] The video's 3:01 to 5:31 (dense grid walls, bright white flood, grid tunnel, blue/purple/green palettes) once the user has split it into scenes
+- [ ] Curved bars and sheared planes (scene 12, scene 8) instead of plain offsets
+- [ ] Optional auto-advance through the phases on a bar count

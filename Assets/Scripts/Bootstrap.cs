@@ -108,6 +108,10 @@ namespace DjVisuals
 
             switch (index)
             {
+                case 2:
+                    worldGo.AddComponent<CubeWorld>().Init(actions, cam, fx);
+                    strip.ShowCore = true; strip.ShowWarp = false; strip.ShowAdvanced = true;   // Progress = next phase
+                    break;
                 case 1:
                     worldGo.AddComponent<UnderwaterWorld>().Init(actions, cam, fx);
                     strip.ShowCore = true; strip.ShowWarp = false; strip.ShowAdvanced = false;
