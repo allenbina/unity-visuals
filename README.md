@@ -77,11 +77,12 @@ Files: `Assets/Scripts/UnderwaterWorld.cs` and the `DjSeabed`, `DjJelly`, `DjFis
 
 ## Cube world (key 3): a three-screen take on Beats 'n' Cubes
 
-A copy-in-spirit of the 2007 Etienne de Crecy show (see `docs/beats-n-cubes-research.md` and `docs/beats-n-cubes-scenes.md`). A 3x3x3 frame of boxes whose edges glow like projected light on scaffolding tubes, with bright dots at the joints and an open center column where the DJ stood. Black void, cool white-cyan with red at the start.
+A copy-in-spirit of the 2007 Etienne de Crecy show (see `docs/beats-n-cubes-research.md` and `docs/beats-n-cubes-scenes.md`). Kept deliberately separate from the Space and Underwater worlds: it shares only the plumbing (beat clock, controls, post-processing).
+
+**Exactly one cube per screen, always.** Each screen has its own camera looking straight at its own cube, so all three are seen identically. Each cube is a bold outer frame divided into a 3x3x3 grid of thinner glowing boxes, with bright dots at the joints and an open center column where the DJ stood, in a black void. The cubes turn, tilt, tumble and zoom in place; the cameras never move. The outer two cubes echo the center one a beat late.
 
 - **Progress (P):** next phase. The 13 phases follow the 13 scenes of the reference video: dim red, red flood and a single white line, trace, reveal, look down, tumble, cells play, slide, extrude, dissolve, build, breathe, subdivide. Reset (R) goes back to phase 1.
-- **Three screens:** front-on phases show one cube per panel, with the outer two echoing the center one beat late. Close-up, high-angle and tumble phases pack the three cubes together so the structure spans all panels. The "tunnel" view wraps one cube around the camera so the side panels show its walls.
-- **Drop (D):** floods the whole cube white. **Accent (A):** a bar of light sweeps across the three panels. **Build:** brighter lines and more camera drift.
+- **Drop (D):** floods the cubes white. **Accent (A):** a bar of light sweeps across the three screens. **Build:** brighter lines and more camera drift.
 - Everything is a function of the beat clock, so it stays in time at any BPM.
 
 Files: `Assets/Scripts/CubeWorld.cs` and `Assets/Shaders/DjBoxEdge.shader`.

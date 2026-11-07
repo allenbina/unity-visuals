@@ -98,6 +98,7 @@ namespace DjVisuals
             fx.ResetDefaults();
 
             // neutral state for the new world to override
+            cam.rect = new Rect(0f, 0f, 1f, 1f);
             cam.fieldOfView = 30f;
             cam.clearFlags = CameraClearFlags.Skybox;
             RenderSettings.fog = false;

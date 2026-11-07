@@ -54,9 +54,11 @@ Open questions: glowing bioluminescent look (emissive, dark water) vs. bright st
 
 ## Cube world (third scene, from the Beats 'n' Cubes reference)
 - [x] First pass: edge-glow boxes, 13 phases from the reference scenes, three-panel layouts, Drop / Accent / Build
-- [ ] Phase 6 (tumble) framing is rough
 - [ ] The reveal flash is a flat soft disc; make it a real backlit flare
 - [ ] A DJ silhouette in the open center cell, as in the video
 - [ ] The video's 3:01 to 5:31 (dense grid walls, bright white flood, grid tunnel, blue/purple/green palettes) once the user has split it into scenes
 - [ ] Curved bars and sheared planes (scene 12, scene 8) instead of plain offsets
 - [ ] Optional auto-advance through the phases on a bar count
+- [x] Rewrite: exactly one cube per screen, one camera per screen (no packed or overlapping cubes)
+- [ ] Decide how the cube world relates to the other two (the user says it is effectively a separate project)
+- [ ] 9-screen (3x3 panel) version: allow rows as well as columns; the cube world already makes one cube per panel
