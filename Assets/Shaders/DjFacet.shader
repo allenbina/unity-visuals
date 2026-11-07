@@ -14,6 +14,8 @@ Shader "DjVisuals/Facet"
         _WagUp ("Wag vertical (0 side, 1 up)", Float) = 0
         _Flap ("Wing flap", Float) = 0
         _Light ("Light", Float) = 1
+        _Fold ("Wing fold (0 open, 1 folded)", Float) = 0
+        _LegAmp ("Leg swing", Float) = 0
     }
     SubShader
     {
@@ -38,6 +40,8 @@ Shader "DjVisuals/Facet"
                 float _WagUp;
                 float _Flap;
                 float _Light;
+                float _Fold;
+                float _LegAmp;
             CBUFFER_END
             float _DjBeat;
 
@@ -56,6 +60,15 @@ Shader "DjVisuals/Facet"
                 p.y += swing * _WagUp;
                 p.x += sin(_Wag) * _WagAmp * 0.12 * saturate(0.5 - L) * (1.0 - _WagUp);   // the whole body sways a little
                 p.y += sin(_Wag) * _Flap * lat * lat;                                      // wings beat
+                // folded wings tuck in toward the body (birds)
+                float wl = smoothstep(0.1, 0.6, lat);
+                p.x *= lerp(1.0, 0.3, _Fold * wl);
+                p.y -= _Fold * 0.1 * lat;
+                // legs swing from the hip (vertex alpha < 1 marks a leg; uv.y picks the diagonal pair)
+                float leg = 1.0 - i.col.a;
+                float ph = i.uv.y * 3.14159;
+                p.z += sin(_Wag + ph) * _LegAmp * leg;
+                p.y += max(0.0, cos(_Wag + ph)) * _LegAmp * 0.45 * leg;
 
                 Varyings o;
                 o.pos = TransformObjectToHClip(p);

@@ -113,6 +113,10 @@ namespace DjVisuals
                     worldGo.AddComponent<CubeWorld>().Init(actions, cam, fx);
                     strip.ShowCore = true; strip.ShowWarp = false; strip.ShowAdvanced = true;   // Progress = next phase
                     break;
+                case 3:
+                    worldGo.AddComponent<ForestWorld>().Init(actions, cam, fx);
+                    strip.ShowCore = true; strip.ShowWarp = true; strip.WarpName = "Surge"; strip.ShowAdvanced = false;
+                    break;
                 case 1:
                     worldGo.AddComponent<UnderwaterWorld>().Init(actions, cam, fx);
                     strip.ShowCore = true; strip.ShowWarp = true; strip.WarpName = "Surge"; strip.ShowAdvanced = false;

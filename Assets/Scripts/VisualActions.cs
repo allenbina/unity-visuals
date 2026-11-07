@@ -24,7 +24,7 @@ namespace DjVisuals
         public bool Warping { get; private set; }
 
         // which world is showing (0 = space, 1 = underwater); Bootstrap swaps the world when a switch is requested
-        public static readonly string[] WorldNames = { "Space", "Underwater", "Cube" };
+        public static readonly string[] WorldNames = { "Space", "Underwater", "Cube", "Forest" };
         public int CurrentWorld;
         public event Action<int> WorldRequested;
         public void SelectWorld(int i) { if (i >= 0 && i < WorldNames.Length && i != CurrentWorld) WorldRequested?.Invoke(i); }

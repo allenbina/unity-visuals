@@ -30,7 +30,7 @@ namespace DjVisuals
         {
             Directory.CreateDirectory(OutDir);
             var script = ScriptName();
-            steps = script == "underwater" ? UnderwaterSteps() : script == "switch" ? SwitchSteps() : script == "cube" ? CubeSteps() : SpaceSteps();
+            steps = script == "forest" ? ForestSteps() : script == "underwater" ? UnderwaterSteps() : script == "switch" ? SwitchSteps() : script == "cube" ? CubeSteps() : SpaceSteps();
         }
 
         static string ScriptName()
@@ -73,6 +73,33 @@ namespace DjVisuals
                 new Step { t = 8.0f, kind = "world", arg = "1" },
                 new Step { t = 9.5f, kind = "shot", arg = "04_underwater_again" },
                 new Step { t = 10.0f, kind = "quit" },
+            };
+        }
+
+        static Step[] ForestSteps()
+        {
+            // walk, accent (birds), surge builds, drop (autumn), drop (dusk), drop (winter)
+            return new[]
+            {
+                new Step { t = 0.3f, kind = "sync" },
+                new Step { t = 3.0f, kind = "shot", arg = "01_summer" },
+                new Step { t = 5.0f, kind = "shot", arg = "02_summer_b" },
+                new Step { t = 6.0f, kind = "accent" },
+                new Step { t = 7.0f, kind = "shot", arg = "03_birds_up" },
+                new Step { t = 9.0f, kind = "shot", arg = "04_birds_fly" },
+                new Step { t = 11.0f, kind = "surge" },
+                new Step { t = 14.0f, kind = "shot", arg = "05_surge_early" },
+                new Step { t = 17.0f, kind = "shot", arg = "06_surge_mid" },
+                new Step { t = 20.0f, kind = "shot", arg = "07_surge_full" },
+                new Step { t = 20.5f, kind = "drop" },
+                new Step { t = 21.0f, kind = "shot", arg = "08_flash" },
+                new Step { t = 22.5f, kind = "shot", arg = "09_autumn" },
+                new Step { t = 25.0f, kind = "shot", arg = "10_autumn_b" },
+                new Step { t = 25.5f, kind = "drop" },
+                new Step { t = 29.5f, kind = "shot", arg = "11_dusk" },
+                new Step { t = 30.0f, kind = "drop" },
+                new Step { t = 34.0f, kind = "shot", arg = "12_winter" },
+                new Step { t = 34.5f, kind = "quit" },
             };
         }
 

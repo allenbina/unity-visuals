@@ -104,6 +104,8 @@ namespace DjVisuals
             veil.SetActive(true);
         }
 
+        void OnDestroy() { if (veil != null) Destroy(veil); }
+
         void Update()
         {
             if (t < 0f) return;

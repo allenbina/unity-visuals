@@ -133,7 +133,7 @@ namespace DjVisuals
             if (e.type != EventType.KeyDown) return;
             if (GUI.GetNameOfFocusedControl() == "bpm") return; // typing a tempo
             bool core = ShowCore || ShowAdvanced;
-            bool allowed = e.keyCode == KeyCode.Space || e.keyCode == KeyCode.B || e.keyCode == KeyCode.Alpha1 || e.keyCode == KeyCode.Alpha2 || e.keyCode == KeyCode.Alpha3
+            bool allowed = e.keyCode == KeyCode.Space || e.keyCode == KeyCode.B || e.keyCode == KeyCode.Alpha1 || e.keyCode == KeyCode.Alpha2 || e.keyCode == KeyCode.Alpha3 || e.keyCode == KeyCode.Alpha4
                 || (ShowWarp && e.keyCode == KeyCode.W)
                 || (core && (e.keyCode == KeyCode.A || e.keyCode == KeyCode.D || e.keyCode == KeyCode.R || e.keyCode == KeyCode.UpArrow || e.keyCode == KeyCode.DownArrow))
                 || (ShowAdvanced && e.keyCode == KeyCode.P);
@@ -146,6 +146,7 @@ namespace DjVisuals
                 case KeyCode.Alpha1: Actions.SelectWorld(0); break;
                 case KeyCode.Alpha2: Actions.SelectWorld(1); break;
                 case KeyCode.Alpha3: Actions.SelectWorld(2); break;
+                case KeyCode.Alpha4: Actions.SelectWorld(3); break;
                 case KeyCode.A: Actions.FireAccent(); break;
                 case KeyCode.D: Actions.FireDrop(); break;
                 case KeyCode.P: Actions.Advance(); break;

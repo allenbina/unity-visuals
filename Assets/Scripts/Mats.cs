@@ -131,6 +131,14 @@ namespace DjVisuals
             return m;
         }
 
+        /// <summary>Forest props and ground: two part colors (set per season) and a wind sway amount.</summary>
+        public static Material Forest(float sway)
+        {
+            var m = new Material(Get("DjVisuals/Forest"));
+            m.SetFloat("_Sway", sway);
+            return m;
+        }
+
         public static Material NebulaSky()
         {
             return new Material(Get("DjVisuals/NebulaSky"));
