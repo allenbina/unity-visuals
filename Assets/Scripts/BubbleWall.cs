@@ -13,12 +13,14 @@ namespace DjVisuals
         public const float SwapAt = 2.0f;       // seconds after Play when the screen is fully covered
         public const float Duration = 4.7f;
 
-        Material mat;
-        GameObject go;
+        Material mat, veilMat;
+        GameObject go, veil;
         float t = -1f;
 
         public bool Active { get { return t >= 0f; } }
         public float T { get { return t; } }
+        /// <summary>0..1 swell around the moment of the swap (drives bloom, chromatic aberration and field of view).</summary>
+        public float Env { get { return t < 0f ? 0f : Mathf.Exp(-Mathf.Pow((t - SwapAt) / 0.7f, 2f)); } }
 
         public static Mesh SingleBubble(float radius)
         {
@@ -33,7 +35,7 @@ namespace DjVisuals
         }
 
         /// <summary>Bakes the bubbles for a camera at camPos looking along +z (with half-height factor of its field of view).</summary>
-        public void Build(Vector3 camPos, int count)
+        public void Build(Vector3 camPos, int count, Camera cam)
         {
             var rng = new System.Random(42);
             float F(float lo, float hi) { return lo + (float)rng.NextDouble() * (hi - lo); }
@@ -71,7 +73,7 @@ namespace DjVisuals
             m.SetVertices(V); m.SetColors(C); m.SetUVs(1, U1); m.SetUVs(2, U2); m.SetTriangles(I, 0);
             m.bounds = new Bounds(Vector3.zero, Vector3.one * 2000f);
 
-            mat = Mats.Bubble(new Color(0.8f, 1.5f, 1.9f, 1f), 0.5f, true);
+            mat = Mats.Bubble(new Color(1.0f, 1.7f, 2.1f, 1f), 0.2f, true);
             go = new GameObject("BubbleWallMesh");
             go.transform.SetParent(transform, false);
             go.AddComponent<MeshFilter>().sharedMesh = m;
@@ -80,6 +82,18 @@ namespace DjVisuals
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             r.receiveShadows = false;
             go.SetActive(false);
+
+            // the veil: a quad on the camera that covers the whole view
+            veilMat = new Material(Shader.Find("DjVisuals/Veil"));
+            veilMat.SetColor("_Color", new Color(0.8f, 1.5f, 1.85f, 1f));
+            veil = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            veil.name = "BubbleVeil";
+            Destroy(veil.GetComponent<Collider>());
+            veil.transform.SetParent(cam.transform, false);
+            veil.transform.localPosition = new Vector3(0f, 0f, 8f);
+            veil.transform.localScale = new Vector3(8f * 2f * Mathf.Tan(15f * Mathf.Deg2Rad) * 5.4f * 1.25f, 8f * 2f * Mathf.Tan(20f * Mathf.Deg2Rad), 1f);
+            veil.GetComponent<Renderer>().sharedMaterial = veilMat;
+            veil.SetActive(false);
         }
 
         public void Play()
@@ -87,6 +101,7 @@ namespace DjVisuals
             t = 0f;
             mat.SetFloat("_WallT", 0f);
             go.SetActive(true);
+            veil.SetActive(true);
         }
 
         void Update()
@@ -94,7 +109,9 @@ namespace DjVisuals
             if (t < 0f) return;
             t += Time.deltaTime;
             mat.SetFloat("_WallT", t);
-            if (t > Duration) { t = -1f; go.SetActive(false); }
+            veilMat.SetFloat("_Front", -0.45f + t * 0.45f);
+            veilMat.SetFloat("_Bump", Env);
+            if (t > Duration) { t = -1f; go.SetActive(false); veil.SetActive(false); }
         }
     }
 }

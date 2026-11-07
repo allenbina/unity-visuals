@@ -275,7 +275,12 @@ namespace DjVisuals
                 new Color(0.45f, 0.12f, 0.95f), new Color(0.05f, 0.75f, 0.65f), new Color(1.0f, 0.3f, 0.45f),
             };
             reefCoralMats = new Material[palette.Length];
-            for (int i = 0; i < palette.Length; i++) reefCoralMats[i] = Mats.Facet(palette[i], palette[i] * 0.08f);
+            for (int i = 0; i < palette.Length; i++)
+            {
+                float gray = palette[i].grayscale;
+                var soft = Color.Lerp(palette[i], new Color(gray, gray, gray), 0.16f) * 0.92f;   // a little less saturated
+                reefCoralMats[i] = Mats.Facet(soft, soft * 0.06f);
+            }
             reefRockMat = Mats.Facet(new Color(0.5f, 0.45f, 0.4f), Color.black);
 
             var rng = new System.Random(5);
@@ -583,12 +588,12 @@ namespace DjVisuals
             var brend = bg.GetComponent<ParticleSystemRenderer>();
             brend.renderMode = ParticleSystemRenderMode.Mesh;
             brend.mesh = BubbleWall.SingleBubble(0.5f);
-            brend.sharedMaterial = Mats.Bubble(new Color(0.8f, 1.4f, 1.8f, 1f), 0.14f, false);
+            brend.sharedMaterial = Mats.Bubble(new Color(1.0f, 1.6f, 2.0f, 1f), 0.1f, false);
             bubbles.Play();
 
             // the wall of bubbles for the Drop
             wall = gameObject.AddComponent<BubbleWall>();
-            wall.Build(CamPos, 3400);
+            wall.Build(CamPos, 3400, cam);
 
             // light shafts from the surface
             for (int i = 0; i < 16; i++)
@@ -835,11 +840,12 @@ namespace DjVisuals
             var pos = CamPos + new Vector3(Mathf.Sin(t * 0.05f) * 5f, Mathf.Sin(t * 0.13f) * 0.8f, 0f);
             cam.transform.position = pos;
             cam.transform.rotation = Quaternion.LookRotation(CamLook - pos);
-            cam.fieldOfView = 30f + build * 3f + flash * 2f;
+            float we = wall.Env;
+            cam.fieldOfView = 30f + build * 3f + flash * 2f + we * 4f;
 
-            fx.Bloom.intensity.value = bloomBase + beatEnv * 0.25f + build * 0.5f + flash * 2.5f;
+            fx.Bloom.intensity.value = bloomBase + beatEnv * 0.25f + build * 0.5f + flash * 2.5f + we * 1.2f;
             fx.Adjust.postExposure.value = flash * 0.9f;
-            fx.Chroma.intensity.value = 0.05f + build * 0.15f + flash * 0.3f;
+            fx.Chroma.intensity.value = 0.05f + build * 0.15f + flash * 0.3f + we * 0.35f;
             fx.Vig.intensity.value = 0.3f + build * 0.1f;
         }
     }

@@ -48,7 +48,7 @@ Shader "DjVisuals/Bubble"
                     c.y += i.prm.y * _WallT;
                     c.x += sin(_WallT * 2.3 + ph) * 0.9;
                     c.z += cos(_WallT * 1.7 + ph) * 0.5;
-                    w = c + i.pos.xyz * i.prm.x;
+                    w = c + float3(i.pos.x, i.pos.y * 1.55, i.pos.z) * i.prm.x;   // stretched along the rise, like a streak
                 }
                 else
                 {
@@ -65,10 +65,21 @@ Shader "DjVisuals/Bubble"
             {
                 float3 n = normalize(cross(ddy(i.posWS), ddx(i.posWS)));
                 float3 v = normalize(_WorldSpaceCameraPos - i.posWS);
-                float rim = pow(1.0 - saturate(abs(dot(n, v))), 1.4);
-                float a = saturate((_Fill + rim * 0.75) * i.col.a);
-                float3 c = _Color.rgb * (0.45 + rim * 1.5) * a;
-                float vis = 1.0 - dj_fogFactor(i.posWS) * 0.7;
+                if (dot(n, v) < 0.0) n = -n;
+                float rim = pow(1.0 - saturate(dot(n, v)), 1.6);
+
+                // soap-bubble shimmer: each facet picks a slightly different hue
+                float3 irid = 0.5 + 0.5 * cos(6.2832 * (n.x * 0.55 + n.y * 0.35 + float3(0.0, 0.33, 0.67)));
+                float3 tint = lerp(_Color.rgb, _Color.rgb * (0.55 + irid * 0.9), 0.4);
+
+                // a sharp glint where a facet catches the light from the upper left
+                float3 H = normalize(normalize(float3(-0.45, 0.8, -0.4)) + v);
+                float glint = pow(saturate(dot(n, H)), 60.0);
+
+                float a = saturate((_Fill + rim * 0.55) * i.col.a);
+                float3 c = tint * (0.35 + rim * 1.3) * a + float3(1.0, 1.0, 1.0) * glint * 1.6 * i.col.a;
+                a = saturate(a + glint * 0.8);
+                float vis = 1.0 - dj_fogFactor(i.posWS) * 0.6;
                 return half4(c * vis, a * vis);
             }
             ENDHLSL
