@@ -78,20 +78,30 @@ namespace DjVisuals
 
         static Step[] UnderwaterSteps()
         {
+            // deep -> Drop (bubble wall, swap at 2.0 s) -> coral reef -> Drop -> deep with the reveal ring
             return new[]
             {
                 new Step { t = 0.3f, kind = "sync" },
-                new Step { t = 2.0f, kind = "shot", arg = "01_water" },
-                new Step { t = 2.4f, kind = "shot", arg = "02_water_b" },
+                new Step { t = 2.0f, kind = "shot", arg = "01_deep" },
+                new Step { t = 2.4f, kind = "shot", arg = "02_deep_b" },
                 new Step { t = 3.0f, kind = "accent" },
-                new Step { t = 3.5f, kind = "shot", arg = "03_accent" },
-                new Step { t = 4.0f, kind = "build" },
-                new Step { t = 6.0f, kind = "shot", arg = "04_build" },
+                new Step { t = 5.0f, kind = "build" },
                 new Step { t = 6.5f, kind = "drop" },
-                new Step { t = 7.2f, kind = "shot", arg = "05_drop_a" },
-                new Step { t = 8.0f, kind = "shot", arg = "06_drop_b" },
-                new Step { t = 11.0f, kind = "shot", arg = "07_reef_lit" },
-                new Step { t = 11.5f, kind = "quit" },
+                new Step { t = 7.4f, kind = "shot", arg = "03_wall_rising" },
+                new Step { t = 8.1f, kind = "shot", arg = "04_wall_covering" },
+                new Step { t = 8.7f, kind = "shot", arg = "05_wall_swap" },
+                new Step { t = 9.4f, kind = "shot", arg = "06_wall_leaving" },
+                new Step { t = 10.2f, kind = "shot", arg = "07_wall_top" },
+                new Step { t = 12.0f, kind = "shot", arg = "08_reef" },
+                new Step { t = 12.4f, kind = "shot", arg = "09_reef_b" },
+                new Step { t = 12.6f, kind = "accent" },
+                new Step { t = 21.0f, kind = "shot", arg = "10_reef_cruiser" },
+                new Step { t = 24.0f, kind = "shot", arg = "11_reef_cruiser_b" },
+                new Step { t = 26.0f, kind = "drop" },
+                new Step { t = 28.6f, kind = "shot", arg = "12_wall_back" },
+                new Step { t = 30.6f, kind = "shot", arg = "13_deep_reveal" },
+                new Step { t = 32.0f, kind = "shot", arg = "14_deep_lit" },
+                new Step { t = 32.5f, kind = "quit" },
             };
         }
 

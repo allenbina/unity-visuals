@@ -112,6 +112,25 @@ namespace DjVisuals
             return m;
         }
 
+        /// <summary>Flat-shaded faceted material (creatures and reef pieces). Albedo = vertex color x tint.</summary>
+        public static Material Facet(Color tint, Color glow)
+        {
+            var m = new Material(Get("DjVisuals/Facet"));
+            m.SetColor("_Tint", tint);
+            m.SetColor("_Glow", glow);
+            return m;
+        }
+
+        /// <summary>Faceted bubble: clear with a bright rim. fill = how solid the middle is.</summary>
+        public static Material Bubble(Color hdr, float fill, bool wall)
+        {
+            var m = new Material(Get("DjVisuals/Bubble"));
+            m.SetColor("_Color", hdr);
+            m.SetFloat("_Fill", fill);
+            m.SetFloat("_Wall", wall ? 1f : 0f);
+            return m;
+        }
+
         public static Material NebulaSky()
         {
             return new Material(Get("DjVisuals/NebulaSky"));

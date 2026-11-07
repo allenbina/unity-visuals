@@ -65,7 +65,7 @@ Shader "DjVisuals/Jelly"
 
             half4 frag(Varyings i) : SV_Target
             {
-                float3 n = normalize(i.nWS);
+                float3 n = normalize(cross(ddy(i.posWS), ddx(i.posWS)));   // faceted
                 float3 v = normalize(_WorldSpaceCameraPos - i.posWS);
                 float rim = pow(1.0 - saturate(abs(dot(n, v))), 2.0);
                 float isTent = i.col.r;

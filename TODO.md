@@ -47,7 +47,9 @@ Open questions: glowing bioluminescent look (emissive, dark water) vs. bright st
 
 ## Underwater world (second scene)
 - [x] First pass: seabed with caustics, reef lit by Drop, jellyfish beat schedules, beat-locked fish schools, bubbles, light shafts, world switching (1 / 2)
-- [ ] Better fish: swap procedural fish for an animated model, or add more species (rays, a whale shadow, a big shark crossing)
+- [x] Faceted low-poly restyle, Quaternius fish + extra reef fish, big animals on Accent, bubble-wall Drop that swaps deep <-> coral reef
+- [ ] More reef variety: seaweed/kelp, anemones, schools that react to the dolphin, a turtle
+- [ ] Restyle space to match? (it uses real NASA models and smooth shaders; decide whether each world keeps its own style)
 - [ ] Underwater destinations: swim into a kelp forest, a trench, a shipwreck, a bioluminescent cave (like the space destinations)
 - [ ] Surface: a rippling surface seen from below, and a light change as you rise or sink on Build
 - [ ] Tune jelly and fish density, colors and sizes against a real track

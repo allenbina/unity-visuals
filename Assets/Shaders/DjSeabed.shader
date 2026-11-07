@@ -14,6 +14,7 @@ Shader "DjVisuals/Seabed"
     SubShader
     {
         Tags { "RenderType"="Opaque" "Queue"="Geometry" "RenderPipeline"="UniversalPipeline" }
+        Cull Off
 
         Pass
         {
@@ -51,7 +52,9 @@ Shader "DjVisuals/Seabed"
 
             half4 frag(Varyings i) : SV_Target
             {
-                float3 n = normalize(i.nWS);
+                // flat-shaded facets from screen-space derivatives, turned toward the camera
+                float3 n = normalize(cross(ddy(i.posWS), ddx(i.posWS)));
+                if (dot(n, _WorldSpaceCameraPos - i.posWS) < 0.0) n = -n;
                 Light L = GetMainLight();
                 float ndl = saturate(dot(n, L.direction));
 

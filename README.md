@@ -64,16 +64,17 @@ Packages: URP, glTFast + Draco for Unity (the NASA models are Draco-compressed G
 
 ## Underwater world (key 2)
 
-No ship or vehicle: just the water. Everything is generated in code.
+No ship or vehicle: just the water. One art style throughout: **faceted low-poly** (flat-shaded facets from screen-space derivatives, bloom for the glow). Two scenes share the same geometry and swap looks: the dark **deep reef** and a bright, colorful **coral reef**.
 
-- **Beat:** jellyfish stroke on the beat. Each one is assigned when it spawns: ~45% stroke on beats 1 and 3, ~45% on beats 2 and 4, ~10% free-run on their own tempo, with a few tens of milliseconds of jitter. Fish tails are locked to the beat clock (some one flap per beat, some one per two beats, ~10% keep their own tempo) and the schools kick forward on every beat. Caustics on the seabed and the light shafts flash on the beat.
-- **Accent (A):** a burst of bubbles at a random spot on the seabed; the schools dart.
+- **Beat:** jellyfish stroke on the beat. Each one is assigned when it spawns: ~45% stroke on beats 1 and 3, ~45% on beats 2 and 4, ~10% free-run on their own tempo, with a few tens of milliseconds of jitter. Fish tails (and the manta's wings) are locked to the beat clock (some one flap per beat, some one per two beats, ~10% keep their own tempo) and the schools kick forward on every beat. Caustics on the seabed and the light shafts flash on the beat.
+- **Accent (A):** a burst of faceted bubbles at a random spot on the seabed; the schools dart; a big animal glides through (whale, shark or manta in the deep, dolphin or manta on the reef).
 - **Build (Up/Down or slider):** a rising current: schools speed up, more bubbles and marine snow, stronger light shafts.
-- **Drop (D):** every jellyfish strokes at once and a ring sweeps the seabed, lighting the bioluminescent reef (stays lit).
-- **Reset (R):** the reef goes dark again.
+- **Drop (D):** a **wall of bubbles** rises from the bottom of all three screens. Behind it the world swaps scenes (deep <-> coral reef). Arriving in the deep, a ring of light sweeps the seabed and lights the bioluminescent coral.
+- **Reset (R):** back to the dark deep reef.
 
-Files: `Assets/Scripts/UnderwaterWorld.cs` and the `DjSeabed`, `DjJelly`, `DjFish`, `DjWaterSky`, `DjFog` shaders. The rain world still exists in the code but is no longer selectable.
+**Creatures:** the CC0 Quaternius animated fish pack (clownfish, angelfish, tuna-like fish, dolphin, shark, whale, manta ray; see `third_party/quaternius-fish/`) plus four reef fish generated in the same faceted style (blue tang, yellow tang, needlefish, pufferfish). `python tools/convert_fish.py` turns them into flat-colored meshes in `Assets/Resources/Models/Fish/` (nose +Z, 2 units long, wag coordinates in uv0). The tail swing and wing flap run in the vertex shader from the beat clock. Coral (branching, dome, table, sea fan, tube) and rocks are generated in code (`ReefMeshes.cs`).
 
+Files: `Assets/Scripts/UnderwaterWorld.cs`, `Creatures.cs`, `ReefMeshes.cs`, `BubbleWall.cs` and the `DjFacet`, `DjBubble`, `DjSeabed`, `DjJelly`, `DjWaterSky`, `DjFog` shaders. The rain world still exists in the code but is no longer selectable.
 
 ## Cube world (key 3): a three-screen take on Beats 'n' Cubes
 
